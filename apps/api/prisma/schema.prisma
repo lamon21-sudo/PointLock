@@ -1,0 +1,357 @@
+// =====================================================
+// PickRivals Database Schema
+// =====================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum UserStatus {
+  active
+  suspended
+  banned
+  pending_verification
+}
+
+enum TransactionType {
+  purchase
+  bonus
+  match_entry
+  match_win
+  match_refund
+  rake_fee
+  utility_purchase
+  adjustment
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  failed
+  reversed
+}
+
+enum MatchStatus {
+  pending
+  active
+  settled
+  cancelled
+  disputed
+}
+
+enum MatchType {
+  private
+  public
+}
+
+enum SlipStatus {
+  pending
+  active
+  won
+  lost
+  push
+  cancelled
+}
+
+enum PickStatus {
+  pending
+  won
+  lost
+  push
+  cancelled
+}
+
+enum PickType {
+  moneyline
+  spread
+  total
+  prop
+}
+
+enum SportType {
+  NFL
+  NBA
+  MLB
+  NHL
+  SOCCER
+  NCAAF
+  NCAAB
+}
+
+// =====================================================
+// USERS
+// =====================================================
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String     @map("password_hash")
+  emailVerified   Boolean    @default(false) @map("email_verified")
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  username        String     @unique
+  displayName     String?    @map("display_name")
+  avatarUrl       String?    @map("avatar_url")
+  bio             String?
+  status          UserStatus @default(pending_verification)
+  kycVerified     Boolean    @default(false) @map("kyc_verified")
+  kycVerifiedAt   DateTime?  @map("kyc_verified_at")
+  countryCode     String?    @map("country_code") @db.Char(2)
+  stateCode       String?    @map("state_code") @db.VarChar(10)
+  timezone        String?
+  skillRating     Int        @default(1000) @map("skill_rating")
+  matchesPlayed   Int        @default(0) @map("matches_played")
+  matchesWon      Int        @default(0) @map("matches_won")
+  currentStreak   Int        @default(0) @map("current_streak")
+  bestStreak      Int        @default(0) @map("best_streak")
+  referralCode    String?    @unique @map("referral_code")
+  referredById    String?    @map("referred_by_id")
+  fcmToken        String?    @map("fcm_token")
+  apnsToken       String?    @map("apns_token")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  lastLoginAt     DateTime?  @map("last_login_at")
+
+  // Relations
+  referredBy      User?         @relation("Referrals", fields: [referredById], references: [id])
+  referrals       User[]        @relation("Referrals")
+  wallet          Wallet?
+  transactions    Transaction[]
+  slips           Slip[]
+  createdMatches  Match[]       @relation("MatchCreator")
+  opponentMatches Match[]       @relation("MatchOpponent")
+  wonMatches      Match[]       @relation("MatchWinner")
+  refreshTokens   RefreshToken[]
+
+  @@index([email])
+  @@index([username])
+  @@index([referralCode])
+  @@index([skillRating])
+  @@map("users")
+}
+
+// =====================================================
+// REFRESH TOKENS
+// =====================================================
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// =====================================================
+// WALLETS
+// =====================================================
+
+model Wallet {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  paidBalance     BigInt   @default(0) @map("paid_balance")
+  bonusBalance    BigInt   @default(0) @map("bonus_balance")
+  totalDeposited  BigInt   @default(0) @map("total_deposited")
+  totalWon        BigInt   @default(0) @map("total_won")
+  totalLost       BigInt   @default(0) @map("total_lost")
+  totalRakePaid   BigInt   @default(0) @map("total_rake_paid")
+  lastAllowanceAt DateTime? @map("last_allowance_at")
+  version         Int      @default(1)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+// =====================================================
+// TRANSACTIONS
+// =====================================================
+
+model Transaction {
+  id             String            @id @default(uuid())
+  walletId       String            @map("wallet_id")
+  userId         String            @map("user_id")
+  type           TransactionType
+  status         TransactionStatus @default(pending)
+  amount         BigInt
+  paidAmount     BigInt            @default(0) @map("paid_amount")
+  bonusAmount    BigInt            @default(0) @map("bonus_amount")
+  balanceBefore  BigInt            @map("balance_before")
+  balanceAfter   BigInt            @map("balance_after")
+  matchId        String?           @map("match_id")
+  iapReceiptId   String?           @map("iap_receipt_id")
+  externalRef    String?           @map("external_ref")
+  description    String?
+  metadata       Json              @default("{}")
+  idempotencyKey String?           @unique @map("idempotency_key")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  completedAt    DateTime?         @map("completed_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  match  Match? @relation(fields: [matchId], references: [id])
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([type])
+  @@index([matchId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// =====================================================
+// SPORTS EVENTS
+// =====================================================
+
+model SportsEvent {
+  id            String   @id @default(uuid())
+  externalId    String   @unique @map("external_id")
+  sport         SportType
+  league        String
+  homeTeamId    String   @map("home_team_id")
+  homeTeamName  String   @map("home_team_name")
+  homeTeamAbbr  String?  @map("home_team_abbr")
+  homeTeamLogo  String?  @map("home_team_logo")
+  awayTeamId    String   @map("away_team_id")
+  awayTeamName  String   @map("away_team_name")
+  awayTeamAbbr  String?  @map("away_team_abbr")
+  awayTeamLogo  String?  @map("away_team_logo")
+  scheduledAt   DateTime @map("scheduled_at")
+  startedAt     DateTime? @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  homeScore     Int?     @map("home_score")
+  awayScore     Int?     @map("away_score")
+  status        String   @default("scheduled")
+  oddsData      Json     @default("{}") @map("odds_data")
+  oddsUpdatedAt DateTime? @map("odds_updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  picks SlipPick[]
+
+  @@index([externalId])
+  @@index([sport])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("sports_events")
+}
+
+// =====================================================
+// MATCHES (PvP)
+// =====================================================
+
+model Match {
+  id               String      @id @default(uuid())
+  type             MatchType
+  stakeAmount      BigInt      @map("stake_amount")
+  rakePercentage   Decimal     @default(5.00) @map("rake_percentage") @db.Decimal(5, 2)
+  creatorId        String      @map("creator_id")
+  opponentId       String?     @map("opponent_id")
+  winnerId         String?     @map("winner_id")
+  creatorSlipId    String?     @unique @map("creator_slip_id")
+  opponentSlipId   String?     @unique @map("opponent_slip_id")
+  creatorPoints    Decimal     @default(0) @map("creator_points") @db.Decimal(10, 2)
+  opponentPoints   Decimal     @default(0) @map("opponent_points") @db.Decimal(10, 2)
+  status           MatchStatus @default(pending)
+  settledAt        DateTime?   @map("settled_at")
+  settlementReason String?     @map("settlement_reason")
+  totalPot         BigInt?     @map("total_pot")
+  rakeAmount       BigInt?     @map("rake_amount")
+  winnerPayout     BigInt?     @map("winner_payout")
+  inviteCode       String?     @unique @map("invite_code")
+  inviteExpiresAt  DateTime?   @map("invite_expires_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  startedAt        DateTime?   @map("started_at")
+
+  creator      User          @relation("MatchCreator", fields: [creatorId], references: [id])
+  opponent     User?         @relation("MatchOpponent", fields: [opponentId], references: [id])
+  winner       User?         @relation("MatchWinner", fields: [winnerId], references: [id])
+  creatorSlip  Slip?         @relation("CreatorSlip", fields: [creatorSlipId], references: [id])
+  opponentSlip Slip?         @relation("OpponentSlip", fields: [opponentSlipId], references: [id])
+  transactions Transaction[]
+
+  @@index([creatorId])
+  @@index([opponentId])
+  @@index([status])
+  @@index([inviteCode])
+  @@map("matches")
+}
+
+// =====================================================
+// SLIPS
+// =====================================================
+
+model Slip {
+  id             String     @id @default(uuid())
+  userId         String     @map("user_id")
+  matchId        String?    @map("match_id")
+  name           String?
+  status         SlipStatus @default(pending)
+  totalPicks     Int        @default(0) @map("total_picks")
+  correctPicks   Int        @default(0) @map("correct_picks")
+  pointPotential Decimal    @default(0) @map("point_potential") @db.Decimal(10, 2)
+  pointsEarned   Decimal    @default(0) @map("points_earned") @db.Decimal(10, 2)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  lockedAt       DateTime?  @map("locked_at")
+  settledAt      DateTime?  @map("settled_at")
+
+  user          User       @relation(fields: [userId], references: [id])
+  picks         SlipPick[]
+  creatorMatch  Match?     @relation("CreatorSlip")
+  opponentMatch Match?     @relation("OpponentSlip")
+
+  @@index([userId])
+  @@index([status])
+  @@map("slips")
+}
+
+// =====================================================
+// SLIP PICKS
+// =====================================================
+
+model SlipPick {
+  id             String     @id @default(uuid())
+  slipId         String     @map("slip_id")
+  sportsEventId  String     @map("sports_event_id")
+  pickType       PickType   @map("pick_type")
+  selection      String
+  line           Decimal?   @db.Decimal(10, 2)
+  odds           Int
+  propType       String?    @map("prop_type")
+  propPlayerId   String?    @map("prop_player_id")
+  propPlayerName String?    @map("prop_player_name")
+  pointValue     Decimal    @map("point_value") @db.Decimal(10, 2)
+  status         PickStatus @default(pending)
+  resultValue    Decimal?   @map("result_value") @db.Decimal(10, 2)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  settledAt      DateTime?  @map("settled_at")
+
+  slip  Slip        @relation(fields: [slipId], references: [id], onDelete: Cascade)
+  event SportsEvent @relation(fields: [sportsEventId], references: [id])
+
+  @@index([slipId])
+  @@index([sportsEventId])
+  @@index([status])
+  @@map("slip_picks")
+}

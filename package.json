@@ -1,5 +1,5 @@
 {
-  "name": "pick-rivals",
+  "name": "pointlock",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.1.0",
@@ -8,15 +8,18 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "clean": "turbo clean && rm -rf node_modules",
-    "dev:api": "turbo dev --filter=@pick-rivals/api",
-    "dev:mobile": "turbo dev --filter=@pick-rivals/mobile",
-    "db:generate": "pnpm --filter @pick-rivals/api db:generate",
-    "db:migrate": "pnpm --filter @pick-rivals/api db:migrate",
-    "db:push": "pnpm --filter @pick-rivals/api db:push",
-    "db:studio": "pnpm --filter @pick-rivals/api db:studio"
+    "dev:api": "turbo dev --filter=@pointlock/api",
+    "dev:mobile": "turbo dev --filter=@pointlock/mobile",
+    "db:generate": "pnpm --filter @pointlock/api db:generate",
+    "db:migrate": "pnpm --filter @pointlock/api db:migrate",
+    "db:push": "pnpm --filter @pointlock/api db:push",
+    "db:studio": "pnpm --filter @pointlock/api db:studio"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "express-rate-limit": "^8.2.1"
   }
 }

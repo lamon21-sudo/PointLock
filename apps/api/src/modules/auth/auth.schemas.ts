@@ -93,6 +93,43 @@ export const refreshTokenSchema = z.object({
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
 // ===========================================
+// Check Username Availability Schema
+// ===========================================
+
+export const checkUsernameSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(USERNAME_MIN_LENGTH, `Username must be at least ${USERNAME_MIN_LENGTH} characters`)
+    .max(20, 'Username cannot exceed 20 characters') // Note: Different from registration (20 vs 30)
+    .regex(
+      USERNAME_PATTERN,
+      'Username can only contain letters, numbers, and underscores'
+    ),
+});
+
+export type CheckUsernameInput = z.infer<typeof checkUsernameSchema>;
+
+// ===========================================
+// Push Token Schema
+// ===========================================
+
+const EXPO_PUSH_TOKEN_PATTERN = /^ExponentPushToken\[.+\]$/;
+
+export const pushTokenSchema = z.object({
+  token: z
+    .string()
+    .min(1, 'Push token is required')
+    .regex(
+      EXPO_PUSH_TOKEN_PATTERN,
+      'Invalid push token format. Expected ExponentPushToken[...]'
+    ),
+});
+
+export type PushTokenInput = z.infer<typeof pushTokenSchema>;
+
+// ===========================================
 // Validation Helper
 // ===========================================
 

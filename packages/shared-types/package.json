@@ -1,5 +1,5 @@
 {
-  "name": "@pick-rivals/shared-types",
+  "name": "@pointlock/shared-types",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",

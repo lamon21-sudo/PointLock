@@ -699,3 +699,70 @@ Upon successful MVP validation:
 
 _Document Version: 1.0_
 _Last Updated: December 2024_
+
+---
+
+## Task 7.2 Implementation Summary (Completed January 2026)
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `apps/api/src/services/live-scores/types.ts` | Type definitions, sport scoring rules, status normalization |
+| `apps/api/src/services/live-scores/live-scores.processor.ts` | Core score processing & validation logic |
+| `apps/api/src/services/live-scores/live-scores.broadcaster.ts` | Socket.IO broadcasting to match/event rooms |
+| `apps/api/src/services/live-scores/providers/base.provider.ts` | Abstract base class for data providers |
+| `apps/api/src/services/live-scores/providers/odds-api.provider.ts` | The Odds API implementation |
+| `apps/api/src/services/live-scores/providers/index.ts` | Provider registry & polling functions |
+| `apps/api/src/services/live-scores/index.ts` | Service exports |
+| `apps/api/src/modules/live-scores/live-scores.schemas.ts` | Zod validation schemas |
+| `apps/api/src/modules/live-scores/live-scores.controller.ts` | HTTP endpoints (webhook, admin) |
+| `apps/api/src/modules/live-scores/live-scores.routes.ts` | Express route definitions |
+| `apps/api/src/modules/live-scores/index.ts` | Module exports |
+| `apps/api/src/queues/live-scores.queue.ts` | BullMQ queue & worker |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/api/src/socket/socket.types.ts` | Added `event:score`, `event:status` events, `getEventRoomId()` |
+| `apps/api/src/config/index.ts` | Added `liveScores` configuration block |
+| `apps/api/src/app.ts` | Registered live-scores routes |
+| `apps/api/src/index.ts` | Worker initialization & graceful shutdown |
+
+### API Endpoints
+
+- `POST /api/v1/webhooks/live-scores` - Webhook receiver (HMAC verified)
+- `POST /api/v1/admin/live-scores/poll` - Manual poll trigger
+- `GET /api/v1/admin/live-scores/queue-status` - Queue monitoring
+- `GET /api/v1/admin/live-scores/live-events` - Current live events
+- `POST /api/v1/admin/live-scores/manual-update` - Admin score override
+
+### Socket Events
+
+- `event:score` - Broadcast when game scores change
+- `event:status` - Broadcast when game status changes (SCHEDULED → LIVE → COMPLETED)
+
+### Configuration (Environment Variables)
+
+```
+LIVE_SCORES_WEBHOOK_SECRET=<hmac-secret>
+LIVE_SCORES_POLL_INTERVAL=30000
+LIVE_SCORES_ENABLE_POLLING=true
+```
+
+### Security Audit Findings (pvp-referee-auditor)
+
+**Critical Issues to Address Before Production:**
+
+1. Replace in-memory idempotency cache with Redis (distributed systems)
+2. Add webhook timestamp validation (reject >5 min old)
+3. Calculate HMAC on raw request body (before JSON parsing)
+4. Add event status transition guards (auto-flag canceled games for review)
+5. Implement Redis-backed rate limiting on webhook endpoint
+
+**Medium Priority:**
+
+- Race condition in match lookup query (wrap in transaction)
+- Socket room join TOCTOU vulnerability
+- Circuit breaker for provider polling

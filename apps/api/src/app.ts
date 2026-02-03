@@ -7,10 +7,23 @@ import { logger } from './utils/logger';
 import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
 import { AppError } from './utils/errors';
 
+// Import middleware
+import { defaultRateLimiter } from './middleware';
+
 // Import routes
 import healthRoutes from './routes/health.routes';
-import eventsRoutes from './routes/events.routes';
 import { authRoutes } from './modules/auth';
+import { eventsRoutes } from './modules/events';
+import { walletRoutes } from './modules/wallet';
+import { slipsRoutes } from './modules/slips';
+import { matchesRoutes } from './modules/matches';
+import { liveScoresRouter } from './modules/live-scores';
+import { adminRoutes } from './modules/admin';
+import { leaderboardRoutes } from './modules/leaderboard';
+import { usersRoutes } from './modules/users';
+import { friendsRoutes } from './modules/friends';
+import { matchmakingRouter } from './modules/matchmaking';
+import { rankedRoutes } from './modules/ranked';
 
 const app: Express = express();
 
@@ -38,6 +51,10 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // Compress responses
 app.use(compression());
 
+// Global rate limiting - prevents API abuse
+// Note: This applies to ALL routes. For route-specific limits, see examples below.
+app.use(defaultRateLimiter);
+
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
   const start = Date.now();
@@ -60,6 +77,16 @@ app.use('/health', healthRoutes);
 // API v1 routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/events', eventsRoutes);
+app.use('/api/v1/wallet', walletRoutes);
+app.use('/api/v1/slips', slipsRoutes);
+app.use('/api/v1/matches', matchesRoutes);
+app.use('/api/v1', liveScoresRouter);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/leaderboard', leaderboardRoutes);
+app.use('/api/v1/users', usersRoutes);
+app.use('/api/v1/friends', friendsRoutes);
+app.use('/api/v1/matchmaking', matchmakingRouter);
+app.use('/api/v1/ranked', rankedRoutes);
 
 // Root endpoint
 app.get('/', (_req: Request, res: Response) => {

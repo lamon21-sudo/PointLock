@@ -1,0 +1,12 @@
+# k6 Load Test Results
+*.json
+!k6.config.json
+
+# Test output files
+load-test-results.json
+results.json
+*.log
+
+# Temporary files
+*.tmp
+*.temp

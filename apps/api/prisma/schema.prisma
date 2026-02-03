@@ -23,14 +23,18 @@ enum UserStatus {
 }
 
 enum TransactionType {
-  purchase
-  bonus
-  match_entry
-  match_win
-  match_refund
-  rake_fee
-  utility_purchase
-  adjustment
+  DEPOSIT
+  WITHDRAWAL
+  MATCH_ENTRY
+  MATCH_WIN
+  MATCH_REFUND
+  RAKE_FEE
+  BONUS
+  WEEKLY_ALLOWANCE
+  ADMIN_ADJUSTMENT
+  SEASON_REWARD // Task 0.3: Seasonal ranked reward distribution
+  COIN_DEDUCTION // Task 0.3: Coin cost for premium picks
+  STARTER_CREDIT // Task 0.4: One-time starter coins on registration
 }
 
 enum TransactionStatus {
@@ -41,11 +45,16 @@ enum TransactionStatus {
 }
 
 enum MatchStatus {
-  pending
-  active
-  settled
-  cancelled
-  disputed
+  pending // Waiting for opponent to join
+  matched // Opponent joined, both building slips
+  locked // Both slips submitted, awaiting first event start
+  active // At least one event has started
+  settled // All events completed, winner determined
+  draw // Settled as tie (equal points), both refunded
+  cancelled // Cancelled before active, stakes refunded
+  disputed // Under review, funds held in escrow
+  voided // Admin void for fraud/system issues
+  expired // Invite timeout, no opponent joined
 }
 
 enum MatchType {
@@ -54,20 +63,20 @@ enum MatchType {
 }
 
 enum SlipStatus {
-  pending
-  active
-  won
-  lost
-  push
-  cancelled
+  DRAFT // Slip being built, not submitted
+  PENDING // Slip submitted, awaiting event outcomes
+  ACTIVE // Slip locked, events are in progress
+  WON // All picks hit, slip won
+  LOST // One or more picks lost
+  VOID // Slip cancelled/voided (events cancelled, etc)
 }
 
 enum PickStatus {
-  pending
-  won
-  lost
-  push
-  cancelled
+  PENDING // Pick awaiting event outcome
+  HIT // Pick won
+  MISS // Pick lost
+  PUSH // Pick tied/pushed (refunded)
+  VOID // Pick cancelled (event cancelled, etc)
 }
 
 enum PickType {
@@ -85,6 +94,100 @@ enum SportType {
   SOCCER
   NCAAF
   NCAAB
+}
+
+enum EventStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELED
+  POSTPONED
+}
+
+// =====================================================
+// LEADERBOARD ENUMS
+// =====================================================
+
+enum LeaderboardTimeframe {
+  GLOBAL // All-time leaderboard, never resets
+  WEEKLY // Resets every Monday at 00:00 UTC
+  MONTHLY // Resets on the 1st of each month
+  SEASONAL // Resets per sports season
+}
+
+enum LeaderboardStatus {
+  active // Currently accepting entries and updates
+  frozen // Temporarily locked (during prize distribution)
+  archived // Historical record, read-only
+  scheduled // Future leaderboard, not yet active
+}
+
+// =====================================================
+// ADMIN ROLE-BASED ACCESS CONTROL
+// =====================================================
+
+enum AdminRole {
+  SUPER_ADMIN // Full system access, can grant admin roles
+  SETTLEMENT_ADMIN // Can settle/void matches manually
+  SUPPORT_ADMIN // Read-only dispute access, can view audit logs
+  VIEWER // Read-only system access
+}
+
+// =====================================================
+// TASK 0.3 ENUMS - Tier/Rank/GameMode/Social System
+// =====================================================
+
+enum PickTier {
+  FREE // Default, no unlock required
+  STANDARD // Unlocked at 2,500 coins
+  PREMIUM // Unlocked at 7,500+ coins
+  ELITE // Unlocked at 15,000 coins OR 5+ win streak
+}
+
+enum GameMode {
+  INVITE_FRIEND // Generate invite link/code
+  PLAY_FRIEND // Direct challenge from friends list
+  QUICK_MATCH // Auto-matchmaking queue
+  RANDOM_MATCH // Browse open lobbies
+}
+
+enum Rank {
+  BRONZE_1
+  BRONZE_2
+  BRONZE_3
+  SILVER_1
+  SILVER_2
+  SILVER_3
+  GOLD_1
+  GOLD_2
+  GOLD_3
+  PLATINUM_1
+  PLATINUM_2
+  PLATINUM_3
+  DIAMOND_1
+  DIAMOND_2
+  DIAMOND_3
+}
+
+enum FriendshipStatus {
+  PENDING // Request sent, awaiting response
+  ACCEPTED // Both users are friends
+  DECLINED // Request was declined
+  BLOCKED // User blocked the other
+}
+
+enum QueueStatus {
+  WAITING // Actively waiting in queue
+  MATCHED // Match found, transitioning
+  EXPIRED // Queue entry timed out
+  CANCELLED // User manually cancelled
+}
+
+enum SeasonStatus {
+  SCHEDULED // Not started yet
+  ACTIVE // In progress
+  ENDED // Finished, calculating rewards
+  ARCHIVED // Historical, read-only
 }
 
 // =====================================================
@@ -121,20 +224,46 @@ model User {
   lastLoginAt     DateTime?  @map("last_login_at")
 
   // Relations
-  referredBy      User?         @relation("Referrals", fields: [referredById], references: [id])
-  referrals       User[]        @relation("Referrals")
-  wallet          Wallet?
-  transactions    Transaction[]
-  slips           Slip[]
-  createdMatches  Match[]       @relation("MatchCreator")
-  opponentMatches Match[]       @relation("MatchOpponent")
-  wonMatches      Match[]       @relation("MatchWinner")
-  refreshTokens   RefreshToken[]
+  referredBy         User?              @relation("Referrals", fields: [referredById], references: [id])
+  referrals          User[]             @relation("Referrals")
+  wallet             Wallet?
+  transactions       Transaction[]
+  slips              Slip[]
+  createdMatches     Match[]            @relation("MatchCreator")
+  opponentMatches    Match[]            @relation("MatchOpponent")
+  wonMatches         Match[]            @relation("MatchWinner")
+  refreshTokens      RefreshToken[]
+  filedDisputes      MatchDispute[]     @relation("DisputeFiler")
+  resolvedDisputes   MatchDispute[]     @relation("DisputeResolver")
+  leaderboardEntries LeaderboardEntry[] @relation("UserLeaderboardEntries")
+
+  // Admin RBAC fields
+  adminRole      AdminRole? @map("admin_role")
+  adminGrantedAt DateTime?  @map("admin_granted_at")
+  adminGrantedBy String?    @map("admin_granted_by")
+
+  // =====================================================
+  // Task 0.3: Tier Progression System
+  // =====================================================
+  currentTier         PickTier  @default(FREE) @map("current_tier")
+  highestTierUnlocked PickTier  @default(FREE) @map("highest_tier_unlocked")
+  totalCoinsEarned    BigInt    @default(0) @map("total_coins_earned")
+  lastActiveAt        DateTime? @default(now()) @map("last_active_at")
+
+  // Task 0.3: New Relations
+  friendshipsInitiated Friendship[]        @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[]        @relation("FriendshipAddressee")
+  queueEntries         MatchmakingQueue[]
+  seasonEntries        SeasonEntry[]
+  rewardClaims         SeasonRewardClaim[]
 
   @@index([email])
   @@index([username])
   @@index([referralCode])
   @@index([skillRating])
+  @@index([adminRole])
+  @@index([currentTier])
+  @@index([lastActiveAt])
   @@map("users")
 }
 
@@ -143,11 +272,11 @@ model User {
 // =====================================================
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
   revokedAt DateTime? @map("revoked_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -162,18 +291,18 @@ model RefreshToken {
 // =====================================================
 
 model Wallet {
-  id              String   @id @default(uuid())
-  userId          String   @unique @map("user_id")
-  paidBalance     BigInt   @default(0) @map("paid_balance")
-  bonusBalance    BigInt   @default(0) @map("bonus_balance")
-  totalDeposited  BigInt   @default(0) @map("total_deposited")
-  totalWon        BigInt   @default(0) @map("total_won")
-  totalLost       BigInt   @default(0) @map("total_lost")
-  totalRakePaid   BigInt   @default(0) @map("total_rake_paid")
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  paidBalance     BigInt    @default(0) @map("paid_balance")
+  bonusBalance    BigInt    @default(0) @map("bonus_balance")
+  totalDeposited  BigInt    @default(0) @map("total_deposited")
+  totalWon        BigInt    @default(0) @map("total_won")
+  totalLost       BigInt    @default(0) @map("total_lost")
+  totalRakePaid   BigInt    @default(0) @map("total_rake_paid")
   lastAllowanceAt DateTime? @map("last_allowance_at")
-  version         Int      @default(1)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -223,28 +352,34 @@ model Transaction {
 // =====================================================
 
 model SportsEvent {
-  id            String   @id @default(uuid())
-  externalId    String   @unique @map("external_id")
+  id            String      @id @default(uuid())
+  externalId    String      @unique @map("external_id")
   sport         SportType
   league        String
-  homeTeamId    String   @map("home_team_id")
-  homeTeamName  String   @map("home_team_name")
-  homeTeamAbbr  String?  @map("home_team_abbr")
-  homeTeamLogo  String?  @map("home_team_logo")
-  awayTeamId    String   @map("away_team_id")
-  awayTeamName  String   @map("away_team_name")
-  awayTeamAbbr  String?  @map("away_team_abbr")
-  awayTeamLogo  String?  @map("away_team_logo")
-  scheduledAt   DateTime @map("scheduled_at")
-  startedAt     DateTime? @map("started_at")
-  endedAt       DateTime? @map("ended_at")
-  homeScore     Int?     @map("home_score")
-  awayScore     Int?     @map("away_score")
-  status        String   @default("scheduled")
-  oddsData      Json     @default("{}") @map("odds_data")
-  oddsUpdatedAt DateTime? @map("odds_updated_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  homeTeamId    String      @map("home_team_id")
+  homeTeamName  String      @map("home_team_name")
+  homeTeamAbbr  String?     @map("home_team_abbr")
+  homeTeamLogo  String?     @map("home_team_logo")
+  awayTeamId    String      @map("away_team_id")
+  awayTeamName  String      @map("away_team_name")
+  awayTeamAbbr  String?     @map("away_team_abbr")
+  awayTeamLogo  String?     @map("away_team_logo")
+  scheduledAt   DateTime    @map("scheduled_at")
+  startedAt     DateTime?   @map("started_at")
+  endedAt       DateTime?   @map("ended_at")
+  homeScore     Int?        @map("home_score")
+  awayScore     Int?        @map("away_score")
+  status        EventStatus @default(SCHEDULED)
+  oddsData      Json        @default("{}") @map("odds_data")
+  oddsUpdatedAt DateTime?   @map("odds_updated_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Postponement tracking (Task 8.5)
+  originalEventId String?   @map("original_event_id") // If rescheduled from another event
+  rescheduledTo   DateTime? @map("rescheduled_to") // New scheduled time if postponed
+  postponedAt     DateTime? @map("postponed_at") // When event was postponed
+  postponedReason String?   @map("postponed_reason") // League-provided reason
 
   picks SlipPick[]
 
@@ -252,6 +387,8 @@ model SportsEvent {
   @@index([sport])
   @@index([scheduledAt])
   @@index([status])
+  @@index([originalEventId])
+  @@index([status, postponedAt]) // Find postponed events by age
   @@map("sports_events")
 }
 
@@ -283,18 +420,182 @@ model Match {
   updatedAt        DateTime    @updatedAt @map("updated_at")
   startedAt        DateTime?   @map("started_at")
 
-  creator      User          @relation("MatchCreator", fields: [creatorId], references: [id])
-  opponent     User?         @relation("MatchOpponent", fields: [opponentId], references: [id])
-  winner       User?         @relation("MatchWinner", fields: [winnerId], references: [id])
-  creatorSlip  Slip?         @relation("CreatorSlip", fields: [creatorSlipId], references: [id])
-  opponentSlip Slip?         @relation("OpponentSlip", fields: [opponentSlipId], references: [id])
-  transactions Transaction[]
+  // =====================================================
+  // P0 CRITICAL: Financial Security & Audit Trail
+  // =====================================================
 
+  // Optimistic locking to prevent race conditions
+  version Int @default(1)
+
+  // Timestamp when rake % was locked (immutable after this)
+  rakeLockedAt DateTime? @map("rake_locked_at")
+
+  // Transaction linkage for audit trail
+  creatorEntryTxId  String? @map("creator_entry_tx_id")
+  opponentEntryTxId String? @map("opponent_entry_tx_id")
+  settlementTxId    String? @map("settlement_tx_id")
+  rakeTxId          String? @map("rake_tx_id")
+
+  // State transition timestamps
+  matchedAt   DateTime? @map("matched_at") // When opponent joined
+  lockedAt    DateTime? @map("locked_at") // When both slips submitted
+  cancelledAt DateTime? @map("cancelled_at") // When match was cancelled
+
+  // Slip submission tracking
+  creatorSlipSubmittedAt  DateTime? @map("creator_slip_submitted_at")
+  opponentSlipSubmittedAt DateTime? @map("opponent_slip_submitted_at")
+  slipDeadlineAt          DateTime? @map("slip_deadline_at") // Auto-cancel if not submitted by
+
+  // Settlement audit
+  settledBy        String? @map("settled_by") // "SYSTEM" or admin user ID
+  settlementMethod String? @map("settlement_method") // "AUTO", "MANUAL", "DISPUTE_RESOLUTION"
+
+  // Tie/draw handling
+  isDraw         Boolean @default(false) @map("is_draw")
+  tiebreakMethod String? @map("tiebreak_method") // How tie was resolved (if not draw)
+
+  // =====================================================
+  // Task 0.3: Game Modes & Season Attribution
+  // =====================================================
+  gameMode      GameMode? @map("game_mode")
+  tiebreakRound Int       @default(0) @map("tiebreak_round")
+  seasonId      String?   @map("season_id")
+
+  // =====================================================
+  // Settlement Edge Cases (Task 8.5)
+  // =====================================================
+
+  // Manual settlement tracking
+  isManuallySettled  Boolean   @default(false) @map("is_manually_settled")
+  manualSettleReason String?   @map("manual_settle_reason")
+  manualSettledBy    String?   @map("manual_settled_by") // Admin user ID
+  manualSettledAt    DateTime? @map("manual_settled_at")
+
+  // Postponed event handling
+  hasPostponedEvents Boolean   @default(false) @map("has_postponed_events")
+  postponedCheckAt   DateTime? @map("postponed_check_at") // Next scheduled check time
+
+  // =====================================================
+  // P1 IMPORTANT: Matchmaking & UI Performance
+  // =====================================================
+
+  // Matchmaking fields for skill-based matching
+  minSkillRating    Int?    @map("min_skill_rating")
+  maxSkillRating    Int?    @map("max_skill_rating")
+  matchmakingRegion String? @map("matchmaking_region")
+
+  // Cached fields for fast list display (denormalized)
+  creatorUsername   String? @map("creator_username")
+  creatorAvatarUrl  String? @map("creator_avatar_url")
+  opponentUsername  String? @map("opponent_username")
+  opponentAvatarUrl String? @map("opponent_avatar_url")
+
+  // Progress tracking
+  eventsTotal          Int       @default(0) @map("events_total")
+  eventsCompleted      Int       @default(0) @map("events_completed")
+  lastEventCompletedAt DateTime? @map("last_event_completed_at")
+
+  // Cancellation tracking
+  cancelledBy        String? @map("cancelled_by")
+  cancellationReason String? @map("cancellation_reason")
+
+  // =====================================================
+  // Relations
+  // =====================================================
+
+  creator      User            @relation("MatchCreator", fields: [creatorId], references: [id])
+  opponent     User?           @relation("MatchOpponent", fields: [opponentId], references: [id])
+  winner       User?           @relation("MatchWinner", fields: [winnerId], references: [id])
+  creatorSlip  Slip?           @relation("CreatorSlip", fields: [creatorSlipId], references: [id])
+  opponentSlip Slip?           @relation("OpponentSlip", fields: [opponentSlipId], references: [id])
+  transactions Transaction[]
+  disputes     MatchDispute[]
+  auditLogs    MatchAuditLog[]
+  season       Season?         @relation(fields: [seasonId], references: [id])
+
+  // =====================================================
+  // Indexes
+  // =====================================================
+
+  // Basic lookups
   @@index([creatorId])
   @@index([opponentId])
   @@index([status])
   @@index([inviteCode])
+  // Composite indexes for common query patterns
+  @@index([creatorId, status, createdAt]) // User dashboard: "My active/pending matches"
+  @@index([opponentId, status, createdAt]) // User dashboard: matches as opponent
+  @@index([type, status, stakeAmount]) // Matchmaking: "Find public pending matches"
+  @@index([status, minSkillRating, maxSkillRating]) // Matchmaking: skill range filter
+  @@index([status, lastEventCompletedAt]) // Settlement worker: ready to settle
+  @@index([settledAt, winnerId]) // Leaderboard: recent settled matches
+  @@index([status, inviteExpiresAt]) // Expiration: find expired pending matches
+  @@index([status, isDraw]) // Draw handling queries
+  @@index([hasPostponedEvents, postponedCheckAt]) // Postponed match monitoring
+  @@index([isManuallySettled, manualSettledAt]) // Manual settlement audit
+  @@index([gameMode, status, createdAt]) // Task 0.3: Filter matches by mode
+  @@index([seasonId]) // Task 0.3: Season attribution
   @@map("matches")
+}
+
+// =====================================================
+// MATCH DISPUTES
+// =====================================================
+
+model MatchDispute {
+  id             String    @id @default(uuid())
+  matchId        String    @map("match_id")
+  filedBy        String    @map("filed_by")
+  filedAt        DateTime  @default(now()) @map("filed_at")
+  disputeType    String    @map("dispute_type") // scoring, timing, fraud, other
+  description    String    @db.Text
+  status         String    @default("pending") // pending, reviewing, resolved, rejected
+  priority       Int       @default(0) // 0=normal, 1=high, 2=urgent
+  evidence       Json      @default("[]") // Array of evidence items
+  resolvedBy     String?   @map("resolved_by")
+  resolvedAt     DateTime? @map("resolved_at")
+  resolution     String?   @db.Text
+  resolutionType String?   @map("resolution_type") // upheld, rejected, partial
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  match    Match @relation(fields: [matchId], references: [id])
+  filer    User  @relation("DisputeFiler", fields: [filedBy], references: [id])
+  resolver User? @relation("DisputeResolver", fields: [resolvedBy], references: [id])
+
+  @@index([matchId])
+  @@index([status])
+  @@index([filedAt])
+  @@index([priority])
+  @@index([filedBy])
+  @@map("match_disputes")
+}
+
+// =====================================================
+// MATCH AUDIT LOGS
+// =====================================================
+
+model MatchAuditLog {
+  id            String   @id @default(uuid())
+  matchId       String   @map("match_id")
+  action        String // created, opponent_joined, slip_submitted, locked, started, settled, etc.
+  performedBy   String   @map("performed_by") // user ID or "SYSTEM"
+  previousState Json     @map("previous_state")
+  newState      Json     @map("new_state")
+  metadata      Json     @default("{}")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([matchId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([performedBy])
+  @@map("match_audit_logs")
 }
 
 // =====================================================
@@ -302,27 +603,45 @@ model Match {
 // =====================================================
 
 model Slip {
-  id             String     @id @default(uuid())
-  userId         String     @map("user_id")
-  matchId        String?    @map("match_id")
-  name           String?
-  status         SlipStatus @default(pending)
-  totalPicks     Int        @default(0) @map("total_picks")
-  correctPicks   Int        @default(0) @map("correct_picks")
-  pointPotential Decimal    @default(0) @map("point_potential") @db.Decimal(10, 2)
-  pointsEarned   Decimal    @default(0) @map("points_earned") @db.Decimal(10, 2)
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
-  lockedAt       DateTime?  @map("locked_at")
-  settledAt      DateTime?  @map("settled_at")
+  id      String  @id @default(uuid())
+  userId  String  @map("user_id")
+  matchId String? @map("match_id")
+  name    String?
 
-  user          User       @relation(fields: [userId], references: [id])
+  // Financial fields for traditional sportsbook functionality
+  stake           Decimal @default(0) @db.Decimal(18, 8) // Amount wagered (supports fractional cents)
+  totalOdds       Decimal @default(1) @db.Decimal(18, 8) // Cumulative odds (American or Decimal format)
+  potentialPayout Decimal @default(0) @map("potential_payout") @db.Decimal(18, 8) // Calculated: stake * totalOdds
+  actualPayout    Decimal @default(0) @map("actual_payout") @db.Decimal(18, 8) // Final payout after settlement
+
+  // Points-based fields (for PvP fantasy-style competition)
+  totalPicks     Int     @default(0) @map("total_picks")
+  correctPicks   Int     @default(0) @map("correct_picks")
+  pointPotential Decimal @default(0) @map("point_potential") @db.Decimal(10, 2)
+  pointsEarned   Decimal @default(0) @map("points_earned") @db.Decimal(10, 2)
+
+  // =====================================================
+  // Task 0.3: Tier System - Coin Spend Tracking
+  // =====================================================
+  totalCoinCost Int     @default(0) @map("total_coin_cost")
+  minCoinSpend  Int     @default(0) @map("min_coin_spend")
+  coinSpendMet  Boolean @default(false) @map("coin_spend_met")
+
+  status    SlipStatus @default(DRAFT)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  lockedAt  DateTime?  @map("locked_at") // When slip was submitted (DRAFT -> PENDING)
+  settledAt DateTime?  @map("settled_at") // When all picks were graded
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   picks         SlipPick[]
   creatorMatch  Match?     @relation("CreatorSlip")
   opponentMatch Match?     @relation("OpponentSlip")
+  queueEntry    MatchmakingQueue? // Task 2.1: Reverse relation for matchmaking
 
-  @@index([userId])
-  @@index([status])
+  @@index([userId, status]) // Composite index for user slip queries
+  @@index([status]) // Fast lookup by status (pending, won, lost)
+  @@index([createdAt]) // Time-based queries (recent slips)
   @@map("slips")
 }
 
@@ -331,27 +650,405 @@ model Slip {
 // =====================================================
 
 model SlipPick {
-  id             String     @id @default(uuid())
-  slipId         String     @map("slip_id")
-  sportsEventId  String     @map("sports_event_id")
-  pickType       PickType   @map("pick_type")
-  selection      String
-  line           Decimal?   @db.Decimal(10, 2)
-  odds           Int
-  propType       String?    @map("prop_type")
-  propPlayerId   String?    @map("prop_player_id")
-  propPlayerName String?    @map("prop_player_name")
-  pointValue     Decimal    @map("point_value") @db.Decimal(10, 2)
-  status         PickStatus @default(pending)
-  resultValue    Decimal?   @map("result_value") @db.Decimal(10, 2)
-  createdAt      DateTime   @default(now()) @map("created_at")
-  settledAt      DateTime?  @map("settled_at")
+  id            String   @id @default(uuid())
+  slipId        String   @map("slip_id")
+  sportsEventId String   @map("sports_event_id")
+  pickType      PickType @map("pick_type")
+  selection     String // e.g., "over", "under", "home", "away", "player_over"
+  line          Decimal? @db.Decimal(10, 2) // Spread/total line (e.g., -7.5, 215.5)
+
+  // Snapshot of odds at pick creation (immutable after creation)
+  odds        Int // American odds (e.g., -110, +200) or basis points for decimal
+  oddsDecimal Decimal? @map("odds_decimal") @db.Decimal(18, 8) // Decimal odds (e.g., 1.91, 3.00)
+
+  // Live betting flag
+  isLive Boolean @default(false) @map("is_live") // Was this pick placed during live game?
+
+  // Prop-specific fields
+  propType       String? @map("prop_type") // e.g., "player_points", "player_rebounds"
+  propPlayerId   String? @map("prop_player_id")
+  propPlayerName String? @map("prop_player_name")
+
+  // Fantasy points value (for PvP scoring)
+  pointValue Decimal @map("point_value") @db.Decimal(10, 2)
+
+  // =====================================================
+  // Task 0.3: Tier System - Pick Costing
+  // =====================================================
+  coinCost       Int      @default(0) @map("coin_cost")
+  tier           PickTier @default(FREE)
+  marketModifier Decimal  @default(1.0) @map("market_modifier") @db.Decimal(5, 4)
+
+  // Settlement fields
+  status      PickStatus @default(PENDING)
+  resultValue Decimal?   @map("result_value") @db.Decimal(10, 2) // Actual game result
+  settledAt   DateTime?  @map("settled_at")
+
+  // Metadata
+  createdAt      DateTime @default(now()) @map("created_at")
+  marketSnapshot Json?    @map("market_snapshot") // Full odds data at time of pick
 
   slip  Slip        @relation(fields: [slipId], references: [id], onDelete: Cascade)
-  event SportsEvent @relation(fields: [sportsEventId], references: [id])
+  event SportsEvent @relation(fields: [sportsEventId], references: [id], onDelete: Restrict)
 
   @@index([slipId])
   @@index([sportsEventId])
   @@index([status])
+  @@index([sportsEventId, status]) // Fast queries for event settlement
   @@map("slip_picks")
+}
+
+// =====================================================
+// LEADERBOARDS
+// =====================================================
+
+model Leaderboard {
+  id String @id @default(uuid())
+
+  // Leaderboard identification
+  name        String // e.g., "Global All-Time", "NBA Weekly - Week 3"
+  slug        String  @unique // URL-friendly identifier
+  description String? @db.Text
+
+  // Configuration
+  timeframe LeaderboardTimeframe
+  sport     SportType? // NULL = All Sports combined
+  status    LeaderboardStatus    @default(active)
+
+  // Time boundaries (NULL for GLOBAL timeframe)
+  periodStart DateTime? @map("period_start")
+  periodEnd   DateTime? @map("period_end")
+
+  // Display ordering
+  displayOrder Int     @default(0) @map("display_order")
+  isFeatured   Boolean @default(false) @map("is_featured")
+
+  // Caching metadata
+  lastCalculatedAt DateTime? @map("last_calculated_at")
+  entryCount       Int       @default(0) @map("entry_count")
+
+  // Soft delete / lifecycle
+  archivedAt DateTime? @map("archived_at")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  entries LeaderboardEntry[] @relation("LeaderboardEntries")
+
+  // Indexes
+  @@index([status])
+  @@index([timeframe, status])
+  @@index([sport, status])
+  @@index([timeframe, sport, status])
+  @@index([status, displayOrder])
+  @@index([periodEnd, status])
+  @@index([isFeatured, status])
+  @@map("leaderboards")
+}
+
+// =====================================================
+// LEADERBOARD ENTRIES
+// =====================================================
+
+model LeaderboardEntry {
+  id String @id @default(uuid())
+
+  // Foreign keys
+  leaderboardId String @map("leaderboard_id")
+  userId        String @map("user_id")
+
+  // Ranking metrics
+  rank         Int // Current position (1-indexed)
+  previousRank Int? @map("previous_rank") // For rank change indicators
+
+  // Score/Points (primary ranking metric)
+  score Decimal @default(0) @db.Decimal(18, 2)
+
+  // Win/Loss record (for this leaderboard period)
+  wins          Int @default(0)
+  losses        Int @default(0)
+  draws         Int @default(0)
+  matchesPlayed Int @default(0) @map("matches_played")
+
+  // Derived metrics
+  winRate Decimal @default(0) @map("win_rate") @db.Decimal(5, 4)
+
+  // Streak tracking (within this leaderboard period)
+  currentStreak Int @default(0) @map("current_streak")
+  bestStreak    Int @default(0) @map("best_streak")
+
+  // Tiebreaker fields
+  totalRivalCoinsWon BigInt  @default(0) @map("total_rival_coins_won")
+  avgPointsPerMatch  Decimal @default(0) @map("avg_points_per_match") @db.Decimal(10, 2)
+
+  // Timestamps
+  firstEntryAt DateTime  @default(now()) @map("first_entry_at")
+  lastMatchAt  DateTime? @map("last_match_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  leaderboard Leaderboard @relation("LeaderboardEntries", fields: [leaderboardId], references: [id], onDelete: Cascade)
+  user        User        @relation("UserLeaderboardEntries", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([leaderboardId, userId]) // One entry per user per leaderboard
+  // Indexes
+  @@index([leaderboardId, rank])
+  @@index([leaderboardId, score(sort: Desc)])
+  @@index([userId])
+  @@index([userId, leaderboardId])
+  @@index([leaderboardId, wins(sort: Desc)])
+  @@index([leaderboardId, currentStreak(sort: Desc)])
+  @@index([leaderboardId, winRate(sort: Desc)])
+  @@index([lastMatchAt])
+  @@map("leaderboard_entries")
+}
+
+// =====================================================
+// TASK 0.3: FRIENDSHIP SYSTEM
+// =====================================================
+
+model Friendship {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  friendId   String           @map("friend_id")
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+  acceptedAt DateTime?        @map("accepted_at")
+  blockedAt  DateTime?        @map("blocked_at")
+  declinedAt DateTime?        @map("declined_at")
+
+  requester User @relation("FriendshipRequester", fields: [userId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId, status])
+  @@index([friendId, status])
+  @@index([status, createdAt])
+  @@map("friendships")
+}
+
+// =====================================================
+// TASK 0.3: MATCHMAKING QUEUE
+// =====================================================
+
+model MatchmakingQueue {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  gameMode    GameMode    @map("game_mode")
+  tier        PickTier
+  rank        Rank?
+  stakeAmount BigInt      @map("stake_amount")
+  skillRating Int         @map("skill_rating")
+  region      String?
+  status      QueueStatus @default(WAITING)
+  enqueuedAt  DateTime    @default(now()) @map("enqueued_at")
+  matchedAt   DateTime?   @map("matched_at")
+  expiresAt   DateTime    @map("expires_at")
+  matchId     String?     @map("match_id")
+
+  // =====================================================
+  // TASK 2.1: Matchmaking Service - New Fields
+  // =====================================================
+  // Slip reference (required for new entries, optional for migration compatibility)
+  slipId   String? @unique @map("slip_id") // Unique: one slip can only be in one queue entry
+  slipSize Int?    @map("slip_size") // Number of picks - for exact matching
+
+  // Financial security - debit-first pattern
+  entryTxId          String? @unique @map("entry_tx_id") // Wallet transaction ID for entry fee
+  entryIdempotencyKey String? @unique @map("entry_idempotency_key") // Client-provided idempotency key
+
+  // Concurrency control - optimistic locking
+  version        Int       @default(1)
+  claimExpiresAt DateTime? @map("claim_expires_at") // When claim lock expires (10s timeout)
+
+  // Audit fields
+  matchedByWorker String? @map("matched_by_worker") // Which worker processed this match
+  queueDurationMs Int?    @map("queue_duration_ms") // Total time in queue (ms)
+
+  // Anti-exploit fields (from auditor)
+  lockedAt       DateTime? @map("locked_at")
+  lockedBy       String?   @map("locked_by")
+  rejectionCount Int       @default(0) @map("rejection_count")
+  lastRejectedAt DateTime? @map("last_rejected_at")
+  cooldownUntil  DateTime? @map("cooldown_until")
+
+  // Relations
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slip Slip? @relation(fields: [slipId], references: [id])
+
+  @@unique([userId, gameMode, status])
+  @@index([status, gameMode, tier, stakeAmount])
+  @@index([status, gameMode, skillRating])
+  @@index([status, gameMode, rank])
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@index([slipSize, tier, stakeAmount, status]) // Compatibility pool index
+  @@map("matchmaking_queue")
+}
+
+// =====================================================
+// TASK 0.3: SEASONS
+// =====================================================
+
+model Season {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  startDate DateTime     @map("start_date")
+  endDate   DateTime     @map("end_date")
+  status    SeasonStatus @default(SCHEDULED)
+  isCurrent Boolean      @default(false) @map("is_current")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  // Task 4.3: Season Worker fields
+  lockedAt                  DateTime? @map("locked_at")
+  rankingsFinalizedAt       DateTime? @map("rankings_finalized_at")
+  rewardsDistributedAt      DateTime? @map("rewards_distributed_at")
+  lastRewardProcessedUserId String?   @map("last_reward_processed_user_id")
+
+  entries      SeasonEntry[]
+  rewards      SeasonReward[]
+  rewardClaims SeasonRewardClaim[]
+  matches      Match[]
+
+  @@index([status, startDate])
+  @@index([status, isCurrent])
+  @@index([endDate, status])
+  @@map("seasons")
+}
+
+// =====================================================
+// TASK 0.3: SEASON ENTRIES (User participation)
+// =====================================================
+
+model SeasonEntry {
+  id                     String    @id @default(uuid())
+  userId                 String    @map("user_id")
+  seasonId               String    @map("season_id")
+  rankPoints             Int       @default(0) @map("rank_points")
+  currentRank            Rank?     @map("current_rank")
+  highestRank            Rank?     @map("highest_rank")
+  placementMatchesPlayed Int       @default(0) @map("placement_matches_played")
+  placementMatchesWon    Int       @default(0) @map("placement_matches_won")
+  wins                   Int       @default(0)
+  losses                 Int       @default(0)
+  draws                  Int       @default(0)
+  finalRank              Rank?     @map("final_rank")
+  finalRankPoints        Int?      @map("final_rank_points")
+  rankPosition           Int?      @map("rank_position")
+  lastMatchAt            DateTime? @map("last_match_at")
+  lastDecayAt            DateTime? @map("last_decay_at")
+  version                Int       @default(1)      // Optimistic locking for concurrent updates
+  isPlaced               Boolean   @default(false) @map("is_placed")
+  placedAt               DateTime? @map("placed_at")
+  initialRank            Rank?     @map("initial_rank")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season           Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  placementMatches PlacementMatch[]
+
+  @@unique([userId, seasonId])
+  @@index([seasonId, rankPoints(sort: Desc)])
+  @@index([userId, seasonId])
+  @@index([seasonId, wins(sort: Desc)])
+  @@index([seasonId, placementMatchesPlayed])
+  @@map("season_entries")
+}
+
+// =====================================================
+// TASK 0.3: SEASON REWARDS
+// =====================================================
+
+model SeasonReward {
+  id          String   @id @default(uuid())
+  seasonId    String   @map("season_id")
+  minRank     Rank     @map("min_rank")
+  maxRank     Rank     @map("max_rank")
+  coinReward  Int      @map("coin_reward")
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  season Season              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  claims SeasonRewardClaim[]
+
+  @@unique([seasonId, minRank, maxRank])
+  @@index([seasonId, minRank, maxRank])
+  @@map("season_rewards")
+}
+
+// =====================================================
+// TASK 0.3: SEASON REWARD CLAIMS (Idempotent claiming)
+// =====================================================
+
+model SeasonRewardClaim {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  seasonId      String   @map("season_id")
+  rewardId      String   @map("reward_id")
+  transactionId String?  @unique @map("transaction_id")
+  claimedAt     DateTime @default(now()) @map("claimed_at")
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  reward SeasonReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seasonId, rewardId])
+  @@index([userId, seasonId])
+  @@map("season_reward_claims")
+}
+
+// =====================================================
+// TASK 4.2: PLACEMENT MATCH TRACKING
+// =====================================================
+
+enum MatchOutcome {
+  WIN
+  LOSS
+  DRAW
+}
+
+model PlacementMatch {
+  id            String       @id @default(uuid())
+  seasonEntryId String       @map("season_entry_id")
+  matchId       String       @map("match_id")
+  matchNumber   Int          @map("match_number")
+  outcome       MatchOutcome
+  processedAt   DateTime     @default(now()) @map("processed_at")
+  rpBefore      Int          @map("rp_before")
+  rpAfter       Int          @map("rp_after")
+  rankAssigned  Rank?        @map("rank_assigned")
+
+  seasonEntry SeasonEntry @relation(fields: [seasonEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonEntryId, matchId])
+  @@index([matchId])
+  @@map("placement_matches")
+}
+
+// =====================================================
+// TASK 0.3: PLAYER TIER ASSIGNMENTS
+// =====================================================
+
+model PlayerTierAssignment {
+  id         String    @id @default(uuid())
+  playerId   String    @map("player_id")
+  playerName String    @map("player_name")
+  sport      SportType
+  tier       PickTier
+  stats      Json      @default("{}")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@unique([playerId, sport])
+  @@index([sport, tier])
+  @@index([tier, updatedAt])
+  @@index([playerId])
+  @@map("player_tier_assignments")
 }

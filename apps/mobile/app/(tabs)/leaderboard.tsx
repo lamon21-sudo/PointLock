@@ -1,136 +1,330 @@
-import { View, Text, ScrollView } from 'react-native';
+// =====================================================
+// Leaderboard Screen
+// =====================================================
+// Displays global and weekly leaderboards with current user position
+
+import React, { useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
-// Mock leaderboard data for UI development
-const MOCK_LEADERBOARD = [
-  { rank: 1, username: 'ChiefsKingdom', wins: 47, points: 12450, streak: 8 },
-  { rank: 2, username: 'BillsMafia22', wins: 43, points: 11200, streak: 5 },
-  { rank: 3, username: 'NinersFaithful', wins: 41, points: 10800, streak: 3 },
-  { rank: 4, username: 'EaglesNation', wins: 38, points: 9950, streak: 2 },
-  { rank: 5, username: 'CowboysFan88', wins: 35, points: 9200, streak: 0 },
-  { rank: 6, username: 'DolphinsDan', wins: 33, points: 8700, streak: 4 },
-  { rank: 7, username: 'LionsRoar', wins: 31, points: 8100, streak: 1 },
-  { rank: 8, username: 'RavensFlock', wins: 29, points: 7600, streak: 0 },
-  { rank: 9, username: 'BengalStripes', wins: 27, points: 7100, streak: 2 },
-  { rank: 10, username: 'PackerBacker', wins: 25, points: 6500, streak: 0 },
-];
+import { useLeaderboard } from '../../src/hooks/useLeaderboard';
+import { useAuthStore } from '../../src/stores/auth.store';
+import {
+  LeaderboardRow,
+  LEADERBOARD_ROW_HEIGHT,
+  UserRankCard,
+  LeaderboardPeriodTabs,
+  LeaderboardSkeleton,
+} from '../../src/components/leaderboard';
+import type { LeaderboardEntry } from '../../src/types/leaderboard.types';
+import { LUXURY_THEME } from '../../src/constants/theme';
 
-function LeaderboardItem({
-  rank,
-  username,
-  wins,
-  points,
-  streak,
-  isCurrentUser = false,
-}: {
-  rank: number;
-  username: string;
-  wins: number;
-  points: number;
-  streak: number;
-  isCurrentUser?: boolean;
-}) {
-  const getRankColor = () => {
-    if (rank === 1) return 'text-yellow-400';
-    if (rank === 2) return 'text-gray-300';
-    if (rank === 3) return 'text-amber-600';
-    return 'text-gray-500';
-  };
+// =====================================================
+// Sub-components
+// =====================================================
 
-  const getRankEmoji = () => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
-    return null;
-  };
-
+function EmptyState({ period }: { period: string }): React.ReactElement {
   return (
-    <View
-      className={`flex-row items-center p-4 rounded-xl mb-2 ${
-        isCurrentUser ? 'bg-primary/20 border border-primary' : 'bg-surface'
-      }`}
-    >
-      {/* Rank */}
-      <View className="w-12 items-center">
-        {getRankEmoji() ? (
-          <Text className="text-xl">{getRankEmoji()}</Text>
-        ) : (
-          <Text className={`font-bold text-lg ${getRankColor()}`}>#{rank}</Text>
-        )}
-      </View>
-
-      {/* User Info */}
-      <View className="flex-1 ml-3">
-        <Text className={`font-bold ${isCurrentUser ? 'text-primary' : 'text-white'}`}>
-          {username}
-        </Text>
-        <Text className="text-gray-400 text-xs">{wins} wins</Text>
-      </View>
-
-      {/* Streak */}
-      {streak > 0 && (
-        <View className="bg-success/20 px-2 py-1 rounded mr-3">
-          <Text className="text-success text-xs font-semibold">🔥 {streak}</Text>
-        </View>
-      )}
-
-      {/* Points */}
-      <View className="items-end">
-        <Text className="text-white font-bold">{points.toLocaleString()}</Text>
-        <Text className="text-gray-500 text-xs">pts</Text>
-      </View>
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>{'\u{1F3C6}'}</Text>
+      <Text style={styles.emptyTitle}>No Rankings Yet</Text>
+      <Text style={styles.emptyMessage}>
+        {period === 'weekly'
+          ? "Be the first to climb this week's leaderboard!"
+          : 'Complete matches to appear on the leaderboard'}
+      </Text>
     </View>
   );
 }
 
-export default function LeaderboardScreen() {
+function ErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry: () => void;
+}): React.ReactElement {
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <ScrollView className="flex-1 px-4 pt-4">
-        {/* Your Rank Card */}
-        <View className="bg-surface rounded-2xl p-5 mb-6">
-          <Text className="text-gray-400 text-sm mb-2">Your Ranking</Text>
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-white text-3xl font-bold">#--</Text>
-              <Text className="text-gray-500 text-sm">Not ranked yet</Text>
-            </View>
-            <View className="items-end">
-              <Text className="text-2xl font-bold text-primary">0</Text>
-              <Text className="text-gray-500 text-sm">points</Text>
-            </View>
-          </View>
-          <Text className="text-gray-400 text-xs mt-3">
-            Complete matches to appear on the leaderboard
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorIcon}>{'\u26A0\uFE0F'}</Text>
+      <Text style={styles.errorTitle}>Failed to Load</Text>
+      <Text style={styles.errorMessage}>{error}</Text>
+      <Pressable style={styles.retryButton} onPress={onRetry}>
+        <Text style={styles.retryButtonText}>Try Again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ListFooter({
+  isLoading,
+}: {
+  isLoading: boolean;
+}): React.ReactElement | null {
+  if (!isLoading) return null;
+  return (
+    <View style={styles.footerContainer}>
+      <ActivityIndicator color={LUXURY_THEME.gold.main} size="small" />
+      <Text style={styles.footerText}>Loading more...</Text>
+    </View>
+  );
+}
+
+// =====================================================
+// Main Component
+// =====================================================
+
+export default function LeaderboardScreen(): React.ReactElement {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+
+  const {
+    entries,
+    pagination,
+    isLoading,
+    isLoadingMore,
+    isRefreshing,
+    error,
+    period,
+    setPeriod,
+    refresh,
+    loadMore,
+    currentUserEntry,
+  } = useLeaderboard({ initialPeriod: 'all-time' });
+
+  // =====================================================
+  // Handlers
+  // =====================================================
+
+  const handleUserPress = useCallback((entry: LeaderboardEntry) => {
+    // Don't navigate to own profile from leaderboard
+    if (entry.userId === user?.id) return;
+    router.push({ pathname: '/users/[id]', params: { id: entry.userId } });
+  }, [user?.id, router]);
+
+  // =====================================================
+  // Render Functions
+  // =====================================================
+
+  const renderItem = useCallback(
+    ({ item }: { item: LeaderboardEntry }) => (
+      <LeaderboardRow
+        entry={item}
+        isCurrentUser={item.userId === user?.id}
+        onPress={handleUserPress}
+      />
+    ),
+    [user?.id, handleUserPress]
+  );
+
+  const keyExtractor = useCallback(
+    (item: LeaderboardEntry) => item.userId,
+    []
+  );
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: LEADERBOARD_ROW_HEIGHT + 8, // Row height + margin
+      offset: (LEADERBOARD_ROW_HEIGHT + 8) * index,
+      index,
+    }),
+    []
+  );
+
+  const ListHeaderComponent = useMemo(
+    () => (
+      <View>
+        {/* Period Tabs */}
+        <LeaderboardPeriodTabs selected={period} onSelect={setPeriod} />
+
+        {/* Section Title */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {period === 'weekly' ? 'This Week' : 'All Time'} Rankings
           </Text>
+          {pagination && pagination.total > 0 && (
+            <Text style={styles.sectionCount}>{pagination.total} players</Text>
+          )}
         </View>
+      </View>
+    ),
+    [period, setPeriod, pagination]
+  );
 
-        {/* Period Selector */}
-        <View className="flex-row mb-4">
-          <View className="bg-primary px-4 py-2 rounded-full mr-2">
-            <Text className="text-white font-semibold">All Time</Text>
-          </View>
-          <View className="bg-surface px-4 py-2 rounded-full mr-2">
-            <Text className="text-gray-400 font-semibold">This Week</Text>
-          </View>
-          <View className="bg-surface px-4 py-2 rounded-full">
-            <Text className="text-gray-400 font-semibold">Friends</Text>
-          </View>
+  const ListEmptyComponent = useMemo(
+    () => <EmptyState period={period} />,
+    [period]
+  );
+
+  const ListFooterComponent = useMemo(
+    () => <ListFooter isLoading={isLoadingMore} />,
+    [isLoadingMore]
+  );
+
+  // =====================================================
+  // Render
+  // =====================================================
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Main Content */}
+      {isLoading ? (
+        <View>
+          <LeaderboardPeriodTabs selected={period} onSelect={setPeriod} />
+          <LeaderboardSkeleton />
         </View>
+      ) : error ? (
+        <ErrorState error={error} onRetry={refresh} />
+      ) : (
+        <FlatList
+          data={entries}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          getItemLayout={getItemLayout}
+          ListHeaderComponent={ListHeaderComponent}
+          ListEmptyComponent={ListEmptyComponent}
+          ListFooterComponent={ListFooterComponent}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          // Performance optimizations
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={15}
+          // Pull-to-refresh
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refresh}
+              tintColor={LUXURY_THEME.gold.main}
+              colors={[LUXURY_THEME.gold.main]}
+              progressBackgroundColor={LUXURY_THEME.bg.secondary}
+            />
+          }
+          // Infinite scroll
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+        />
+      )}
 
-        {/* Leaderboard List */}
-        <Text className="text-white font-bold text-lg mb-3">Top Players</Text>
-        {MOCK_LEADERBOARD.map((player) => (
-          <LeaderboardItem key={player.rank} {...player} />
-        ))}
-
-        {/* Note */}
-        <View className="bg-surface-elevated rounded-xl p-4 mt-4 mb-6">
-          <Text className="text-gray-400 text-sm text-center">
-            📊 Mock data for UI preview. Real leaderboards coming in Sprint 9.
-          </Text>
-        </View>
-      </ScrollView>
+      {/* Sticky User Rank Card at Bottom */}
+      {isAuthenticated && !error && (
+        <UserRankCard entry={currentUserEntry} isLoading={isLoading} />
+      )}
     </SafeAreaView>
   );
 }
+
+// =====================================================
+// Styles
+// =====================================================
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: LUXURY_THEME.bg.primary,
+  },
+  listContent: {
+    paddingBottom: 20,
+    flexGrow: 1,
+  },
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+  },
+  sectionCount: {
+    fontSize: 13,
+    color: LUXURY_THEME.text.muted,
+  },
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 60,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 15,
+    color: LUXURY_THEME.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  // Error State
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 15,
+    color: LUXURY_THEME.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: LUXURY_THEME.gold.main,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minHeight: 48,
+  },
+  retryButtonText: {
+    color: LUXURY_THEME.text.primary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Footer
+  footerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  footerText: {
+    color: LUXURY_THEME.text.muted,
+    fontSize: 14,
+  },
+});

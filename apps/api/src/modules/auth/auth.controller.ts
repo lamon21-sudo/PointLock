@@ -10,11 +10,15 @@ import {
   registerSchema,
   loginSchema,
   refreshTokenSchema,
+  checkUsernameSchema,
+  pushTokenSchema,
   validateInput,
 } from './auth.schemas';
 import * as authService from './auth.service';
 import { BadRequestError } from '../../utils/errors';
 import { logger } from '../../utils/logger';
+import { usernameCheckRateLimiter, requireAuth } from '../../middleware';
+import { prisma } from '../../lib/prisma';
 
 const router: Router = Router();
 
@@ -38,15 +42,29 @@ router.post(
   '/register',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      // Debug: Log incoming registration request
+      logger.info('📝 Registration attempt:', {
+        email: req.body.email,
+        username: req.body.username,
+        hasPassword: !!req.body.password,
+        bodyKeys: Object.keys(req.body),
+      });
+
       // Validate input
       const validation = validateInput(registerSchema, req.body);
 
       if (!validation.success || !validation.data) {
+        // Debug: Log validation errors
+        logger.warn('❌ Registration validation failed:', {
+          errors: validation.errors,
+        });
         throw new BadRequestError(
           formatValidationErrors(validation.errors || []),
           ERROR_CODES.VALIDATION_ERROR
         );
       }
+
+      logger.info('✅ Validation passed, creating user...');
 
       // Call service
       const result = await authService.register(validation.data);
@@ -207,6 +225,100 @@ router.post(
       };
 
       res.status(200).json(response);
+    }
+  }
+);
+
+// ===========================================
+// GET /auth/check-username
+// ===========================================
+// Public endpoint - no authentication required.
+// Always returns 200 OK with availability flag to prevent username enumeration.
+
+router.get(
+  '/check-username',
+  usernameCheckRateLimiter,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // Validate input from query parameters
+      const validation = validateInput(checkUsernameSchema, { username: req.query.username });
+
+      if (!validation.success || !validation.data) {
+        throw new BadRequestError(
+          formatValidationErrors(validation.errors || []),
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      // Check username availability
+      const isAvailable = await authService.checkUsernameAvailability(validation.data.username);
+
+      // Always return 200 OK - never use 409 Conflict for "taken" status
+      // This prevents timing-based username enumeration attacks
+      const response: ApiResponse<{ available: boolean }> = {
+        success: true,
+        data: { available: isAvailable },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: generateRequestId(),
+        },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ===========================================
+// POST /auth/push-token
+// ===========================================
+// Protected endpoint - requires authentication.
+// Registers the user's Expo push notification token.
+
+router.post(
+  '/push-token',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // Validate input
+      const validation = validateInput(pushTokenSchema, req.body);
+
+      if (!validation.success || !validation.data) {
+        throw new BadRequestError(
+          formatValidationErrors(validation.errors || []),
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      // Get user ID from auth middleware
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new BadRequestError('User not found', ERROR_CODES.USER_NOT_FOUND);
+      }
+
+      // Update user's push token
+      await prisma.user.update({
+        where: { id: userId },
+        data: { fcmToken: validation.data.token },
+      });
+
+      logger.info('[Auth] Push token registered', { userId });
+
+      // Format response
+      const response: ApiResponse<{ message: string }> = {
+        success: true,
+        data: { message: 'Push token registered successfully' },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: generateRequestId(),
+        },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
     }
   }
 );

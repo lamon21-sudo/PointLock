@@ -1,0 +1,46 @@
+{
+  "scenarios": {
+    "matchmaking_queue_load": {
+      "executor": "ramping-vus",
+      "stages": [
+        { "duration": "30s", "target": 50 },
+        { "duration": "1m", "target": 100 },
+        { "duration": "30s", "target": 0 }
+      ],
+      "gracefulRampDown": "10s",
+      "startTime": "0s"
+    }
+  },
+  "thresholds": {
+    "http_req_duration": ["p(95)<500", "p(99)<1000"],
+    "http_req_failed": ["rate<0.01"],
+    "login_errors": ["rate<0.01"],
+    "queue_join_errors": ["rate<0.05"],
+    "queue_join_duration": ["p(95)<300"],
+    "queue_wait_time": ["p(95)<30000"]
+  },
+  "summaryTrendStats": ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
+  "noConnectionReuse": false,
+  "userAgent": "k6-load-test/1.0",
+  "batch": 10,
+  "batchPerHost": 6,
+  "httpDebug": "false",
+  "tags": {
+    "test_name": "matchmaking_queue_load",
+    "environment": "local"
+  },
+  "systemTags": [
+    "proto",
+    "subproto",
+    "status",
+    "method",
+    "url",
+    "name",
+    "group",
+    "check",
+    "error",
+    "tls_version"
+  ],
+  "summaryTimeUnit": "ms",
+  "noVUConnectionReuse": false
+}

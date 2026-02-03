@@ -2,8 +2,8 @@
 // Slip Types
 // =====================================================
 
-export type SlipStatus = 'pending' | 'active' | 'won' | 'lost' | 'push' | 'cancelled';
-export type PickStatus = 'pending' | 'won' | 'lost' | 'push' | 'cancelled';
+export type SlipStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'WON' | 'LOST' | 'VOID';
+export type PickStatus = 'PENDING' | 'HIT' | 'MISS' | 'PUSH' | 'VOID';
 export type PickType = 'moneyline' | 'spread' | 'total' | 'prop';
 
 export interface Slip {

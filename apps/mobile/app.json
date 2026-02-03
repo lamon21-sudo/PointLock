@@ -1,28 +1,28 @@
 {
   "expo": {
-    "name": "PickRivals",
-    "slug": "pick-rivals",
+    "name": "POINTLOCK",
+    "slug": "pointlock",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "pickrivals",
+    "scheme": "pointlock",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1a1a2e"
+      "backgroundColor": "#0A0A0A"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pickrivals.app"
+      "bundleIdentifier": "com.pointlock.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a2e"
+        "backgroundColor": "#0A0A0A"
       },
-      "package": "com.pickrivals.app"
+      "package": "com.pointlock.app"
     },
     "web": {
       "bundler": "metro",
@@ -31,10 +31,22 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#D4AF37"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4c507a93-062e-4a9e-8956-343e6e1d049f"
+      }
     }
   }
 }

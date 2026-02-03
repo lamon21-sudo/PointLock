@@ -62,6 +62,10 @@ const BCRYPT_ROUNDS = 12;
 const ACCESS_TOKEN_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 
+// Task 0.4: Starter coins credited on registration
+// This is the ONLY place this value should be defined - never hardcode elsewhere
+const STARTER_COINS = 750;
+
 // ===========================================
 // Helper Functions
 // ===========================================
@@ -164,12 +168,34 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
       },
     });
 
-    // Create wallet - MUST succeed or entire transaction fails
+    // Create wallet with starter coins - MUST succeed or entire transaction fails
+    // Task 0.4: New users receive STARTER_COINS as bonus balance
+    const starterCoinsAmount = BigInt(STARTER_COINS);
     const wallet = await tx.wallet.create({
       data: {
         userId: user.id,
         paidBalance: BigInt(0),
-        bonusBalance: BigInt(1000), // 1000 RC welcome bonus
+        bonusBalance: starterCoinsAmount,
+      },
+    });
+
+    // Task 0.4: Record starter credit transaction for audit trail
+    // This uses idempotencyKey to prevent double-credit (though user creation
+    // uniqueness already prevents this, belt-and-suspenders approach)
+    await tx.transaction.create({
+      data: {
+        walletId: wallet.id,
+        userId: user.id,
+        type: 'STARTER_CREDIT',
+        status: 'completed',
+        amount: starterCoinsAmount,
+        paidAmount: BigInt(0),
+        bonusAmount: starterCoinsAmount,
+        balanceBefore: BigInt(0),
+        balanceAfter: starterCoinsAmount,
+        idempotencyKey: `STARTER_CREDIT-${user.id}`,
+        description: 'Welcome bonus: starter coins on registration',
+        completedAt: new Date(),
       },
     });
 
@@ -458,4 +484,23 @@ export async function verifyAccessToken(
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
   };
+}
+
+/**
+ * Check if username is available.
+ * CRITICAL: This is a public endpoint - must not leak information.
+ * Returns only a boolean flag, always with 200 OK status.
+ *
+ * @param username - Username to check (already sanitized by Zod: trimmed, lowercased)
+ * @returns Promise<boolean> - true if available, false if taken
+ */
+export async function checkUsernameAvailability(username: string): Promise<boolean> {
+  // Query only the ID field for performance - we don't need full user data
+  const existingUser = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+
+  // Return true if username is available (no user found)
+  return existingUser === null;
 }

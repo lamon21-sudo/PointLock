@@ -1,172 +1,239 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, SectionList, RefreshControl, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../src/services/api';
-import { SportsEvent, formatOdds, formatSpread } from '@pick-rivals/shared-types';
-import { useState } from 'react';
+import { SportsEvent } from '@pick-rivals/shared-types';
+import { useState, useMemo, useCallback } from 'react';
+import { EventCardSkeleton, LeagueFilterBar, LeagueFilterType } from '../../src/components/events';
+import { BettingEventCard, SlipFAB } from '../../src/components/betting';
+import { useSlipStoreHydration } from '../../src/stores/slip.store';
+import { useAuthStore } from '../../src/stores/auth.store';
+import { getDateGroupKey } from '../../src/utils/date-helpers';
+import { LUXURY_THEME } from '../../src/constants/theme';
+import axios from 'axios';
 
-type SportFilter = 'ALL' | 'NFL' | 'NBA';
+// Using LeagueFilterType from LeagueFilterBar component
 
-function EventCard({ event }: { event: SportsEvent }) {
-  const odds = event.oddsData;
-  const gameDate = new Date(event.scheduledAt);
-  const formattedDate = gameDate.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-  const formattedTime = gameDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  return (
-    <View className="bg-surface rounded-2xl p-4 mb-3">
-      {/* Header */}
-      <View className="flex-row justify-between items-center mb-3">
-        <View className="flex-row items-center">
-          <View className="bg-primary/20 px-2 py-1 rounded mr-2">
-            <Text className="text-primary text-xs font-semibold">{event.sport}</Text>
-          </View>
-          <Text className="text-gray-400 text-xs">
-            {formattedDate} • {formattedTime}
-          </Text>
-        </View>
-      </View>
-
-      {/* Teams */}
-      <View className="flex-row justify-between items-center mb-4">
-        <View className="flex-1">
-          <Text className="text-white font-bold text-base">{event.awayTeamAbbr || event.awayTeamName}</Text>
-          <Text className="text-gray-400 text-xs">Away</Text>
-        </View>
-        <Text className="text-gray-500 font-bold mx-4">@</Text>
-        <View className="flex-1 items-end">
-          <Text className="text-white font-bold text-base">{event.homeTeamAbbr || event.homeTeamName}</Text>
-          <Text className="text-gray-400 text-xs">Home</Text>
-        </View>
-      </View>
-
-      {/* Odds Grid */}
-      <View className="border-t border-background pt-3">
-        {/* Spread */}
-        <View className="flex-row justify-between mb-2">
-          <Text className="text-gray-400 text-xs w-16">Spread</Text>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              {formatSpread(odds.spread.away.line)} ({formatOdds(odds.spread.away.odds)})
-            </Text>
-          </Pressable>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              {formatSpread(odds.spread.home.line)} ({formatOdds(odds.spread.home.odds)})
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Moneyline */}
-        <View className="flex-row justify-between mb-2">
-          <Text className="text-gray-400 text-xs w-16">Money</Text>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              {formatOdds(odds.moneyline.away)}
-            </Text>
-          </Pressable>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              {formatOdds(odds.moneyline.home)}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Total */}
-        <View className="flex-row justify-between">
-          <Text className="text-gray-400 text-xs w-16">Total</Text>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              O {odds.total.line} ({formatOdds(odds.total.over)})
-            </Text>
-          </Pressable>
-          <Pressable className="flex-1 bg-background rounded py-2 mx-1 active:bg-surface-elevated">
-            <Text className="text-white text-center text-sm font-medium">
-              U {odds.total.line} ({formatOdds(odds.total.under)})
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
+interface EventSection {
+  title: string;
+  data: SportsEvent[];
 }
 
+/**
+ * Events Screen - Production Quality
+ *
+ * Features:
+ * - SectionList for proper virtualization with date grouping
+ * - Pull-to-refresh with proper feedback
+ * - Skeleton loaders matching EventCard dimensions
+ * - Premium segmented sport filter
+ * - Graceful empty states with clear messaging
+ * - Staggered animations for smooth appearance
+ */
 export default function EventsScreen() {
-  const [filter, setFilter] = useState<SportFilter>('ALL');
+  const [filter, setFilter] = useState<LeagueFilterType>('ALL');
+  const isHydrated = useSlipStoreHydration();
+  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['events', filter],
     queryFn: async () => {
-      const params = filter !== 'ALL' ? `?sport=${filter}` : '';
+      const params = filter !== 'ALL' ? `?sport=${filter}&status=SCHEDULED` : '?status=SCHEDULED';
       const response = await api.get(`/events${params}`);
       return response.data;
     },
+    enabled: isAuthInitialized, // Wait for auth initialization to prevent 401 race condition
+    staleTime: 30000, // Consider data fresh for 30 seconds (betting odds change frequently)
+    retry: 2, // Retry failed requests twice before showing error
+    retryDelay: (attemptIndex) => Math.min(1000 * Math.pow(2, attemptIndex), 5000), // Exponential backoff
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const events: SportsEvent[] = data?.data || [];
 
+  // Group events by date for section list
+  const sections: EventSection[] = useMemo(() => {
+    if (events.length === 0) return [];
+
+    const grouped = events.reduce((acc, event) => {
+      const dateKey = getDateGroupKey(event.scheduledAt);
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(event);
+      return acc;
+    }, {} as Record<string, SportsEvent[]>);
+
+    // Convert to array of sections
+    return Object.entries(grouped).map(([title, data]) => ({
+      title,
+      data,
+    }));
+  }, [events]);
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  // Render section header
+  const renderSectionHeader = ({ section }: { section: EventSection }) => (
+    <View className="bg-background px-4 py-3">
+      <Text className="text-text-primary font-bold text-lg">{section.title}</Text>
+    </View>
+  );
+
+  // Render individual event card with betting functionality
+  const renderItem = ({ item, index }: { item: SportsEvent; index: number }) => (
+    <BettingEventCard event={item} index={index} />
+  );
+
+  // Loading state - show skeleton loaders (also wait for slip store hydration)
+  if (isLoading || !isHydrated) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+        <LeagueFilterBar selected={filter} onSelect={setFilter} />
+        <View className="flex-1 px-4">
+          {[0, 1, 2, 3].map((index) => (
+            <EventCardSkeleton key={index} index={index} />
+          ))}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    // Determine error type for better user messaging
+    const isTimeoutError = axios.isAxiosError(error) &&
+      (error.code === 'ECONNABORTED' || error.message.includes('timeout'));
+    const isNetworkError = axios.isAxiosError(error) &&
+      (error.message.includes('Network Error') || error.code === 'ERR_NETWORK');
+
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+        <LeagueFilterBar selected={filter} onSelect={setFilter} />
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="bg-error/10 rounded-2xl p-6 w-full" style={styles.errorContainer}>
+            <Text className="text-error font-bold text-xl mb-2 text-center">
+              Unable to Load Events
+            </Text>
+            <Text className="text-text-secondary text-center text-base mb-4">
+              {isTimeoutError
+                ? 'The request took too long to complete'
+                : isNetworkError
+                ? 'Cannot connect to the server'
+                : 'Please check your connection and try again'}
+            </Text>
+            <Text className="text-text-muted text-center text-sm mb-5">
+              {isNetworkError || isTimeoutError
+                ? 'Make sure the API server is running on port 3000 and the API URL in app.config.js matches your machine\'s IP address'
+                : 'Pull down to refresh or try again'}
+            </Text>
+            <Pressable
+              onPress={() => refetch()}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Empty state
+  if (events.length === 0) {
+    return (
+      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+        <LeagueFilterBar selected={filter} onSelect={setFilter} />
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-6xl mb-4">📅</Text>
+          <Text className="text-text-primary font-bold text-xl mb-2">No Events Available</Text>
+          <Text className="text-text-secondary text-center text-base">
+            {filter !== 'ALL'
+              ? `No ${filter} games scheduled at the moment`
+              : 'No games scheduled at the moment'}
+          </Text>
+          <Text className="text-text-muted text-center text-sm mt-2">Pull down to refresh</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Main content with events grouped by date
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      {/* Sport Filter */}
-      <View className="flex-row px-4 py-3 gap-2">
-        {(['ALL', 'NFL', 'NBA'] as SportFilter[]).map((sport) => (
-          <Pressable
-            key={sport}
-            onPress={() => setFilter(sport)}
-            className={`px-4 py-2 rounded-full ${
-              filter === sport ? 'bg-primary' : 'bg-surface'
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                filter === sport ? 'text-white' : 'text-gray-400'
-              }`}
-            >
-              {sport}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <LeagueFilterBar selected={filter} onSelect={setFilter} />
 
-      <ScrollView className="flex-1 px-4">
-        {isLoading && (
-          <View className="py-12 items-center">
-            <ActivityIndicator color="#6366f1" size="large" />
-            <Text className="text-gray-400 mt-4">Loading events...</Text>
-          </View>
-        )}
+      <SectionList
+        sections={sections}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled={true}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={handleRefresh}
+            tintColor={LUXURY_THEME.gold.main}
+            colors={[LUXURY_THEME.gold.main]}
+            progressBackgroundColor={LUXURY_THEME.bg.secondary}
+          />
+        }
+        // Performance optimizations
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={8}
+        windowSize={10}
+        removeClippedSubviews={true}
+        // Footer padding for FAB
+        ListFooterComponent={<View style={styles.footer} />}
+      />
 
-        {error && (
-          <View className="bg-error/20 rounded-xl p-4 my-4">
-            <Text className="text-error font-semibold">Error loading events</Text>
-            <Text className="text-gray-400 text-sm mt-1">
-              Make sure the API server is running on port 3000
-            </Text>
-          </View>
-        )}
-
-        {!isLoading && !error && events.length === 0 && (
-          <View className="py-12 items-center">
-            <Text className="text-4xl mb-4">📅</Text>
-            <Text className="text-white font-semibold">No events found</Text>
-            <Text className="text-gray-400 text-sm">Check back later</Text>
-          </View>
-        )}
-
-        {events.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
-
-        {/* Bottom padding */}
-        <View className="h-6" />
-      </ScrollView>
+      {/* Floating Action Button for slip review */}
+      <SlipFAB />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  listContent: {
+    paddingHorizontal: 0, // Card handles its own margin
+  },
+  errorContainer: {
+    shadowColor: LUXURY_THEME.status.error,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retryButton: {
+    backgroundColor: LUXURY_THEME.gold.main,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: LUXURY_THEME.spacing.borderRadiusPill, // Pill shape
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    shadowColor: LUXURY_THEME.gold.main,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: LUXURY_THEME.bg.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  footer: {
+    height: 120, // Space for floating dock + SlipFAB
+  },
+});

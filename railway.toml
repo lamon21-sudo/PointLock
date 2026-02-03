@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+
+[build.nixpacks]
+pkgs = ["nodejs_18", "pnpm"]
+
+[deploy]
+startCommand = "cd apps/api && pnpm run start"

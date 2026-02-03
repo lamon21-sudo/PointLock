@@ -12,22 +12,38 @@ import { logger } from '../utils/logger';
 // Connection Configuration
 // ===========================================
 
-const redisOptions: RedisOptions = {
-  host: config.redis.host,
-  port: config.redis.port,
-  password: config.redis.password,
-  maxRetriesPerRequest: null, // Required by BullMQ
-  enableReadyCheck: false, // Faster startup
-  retryStrategy: (times: number) => {
-    if (times > 10) {
-      logger.error('Redis connection failed after 10 retries');
-      return null; // Stop retrying
-    }
-    const delay = Math.min(times * 100, 3000);
-    logger.warn(`Redis connection retry #${times} in ${delay}ms`);
-    return delay;
-  },
+// Parse REDIS_URL if available, otherwise fall back to host/port
+const getRedisOptions = (): RedisOptions => {
+  const baseOptions: RedisOptions = {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    enableReadyCheck: false, // Faster startup
+    retryStrategy: (times: number) => {
+      if (times > 10) {
+        logger.error('Redis connection failed after 10 retries');
+        return null; // Stop retrying
+      }
+      const delay = Math.min(times * 100, 3000);
+      logger.warn(`Redis connection retry #${times} in ${delay}ms`);
+      return delay;
+    },
+  };
+
+  // If REDIS_URL is set, use it directly
+  if (config.redis.url && config.redis.url !== 'redis://localhost:6379') {
+    logger.info(`Using REDIS_URL: ${config.redis.url.replace(/:[^:@]+@/, ':***@')}`);
+    return baseOptions;
+  }
+
+  // Fall back to host/port configuration
+  return {
+    ...baseOptions,
+    host: config.redis.host,
+    port: config.redis.port,
+    password: config.redis.password,
+  };
 };
+
+const redisOptions = getRedisOptions();
 
 // ===========================================
 // Singleton Connections
@@ -42,7 +58,12 @@ let subscriberConnection: Redis | null = null;
  */
 export function getRedisConnection(): Redis {
   if (!connection) {
-    connection = new Redis(redisOptions);
+    // Use REDIS_URL if available, otherwise use options object
+    if (config.redis.url && config.redis.url !== 'redis://localhost:6379') {
+      connection = new Redis(config.redis.url, redisOptions);
+    } else {
+      connection = new Redis(redisOptions);
+    }
 
     connection.on('connect', () => {
       logger.info('Redis connection established');
@@ -66,7 +87,12 @@ export function getRedisConnection(): Redis {
  */
 export function getSubscriberConnection(): Redis {
   if (!subscriberConnection) {
-    subscriberConnection = new Redis(redisOptions);
+    // Use REDIS_URL if available, otherwise use options object
+    if (config.redis.url && config.redis.url !== 'redis://localhost:6379') {
+      subscriberConnection = new Redis(config.redis.url, redisOptions);
+    } else {
+      subscriberConnection = new Redis(redisOptions);
+    }
 
     subscriberConnection.on('error', (err) => {
       logger.error('Redis subscriber connection error:', err);

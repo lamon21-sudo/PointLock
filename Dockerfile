@@ -18,7 +18,7 @@ COPY packages/shared-types ./packages/shared-types
 COPY apps/api ./apps/api
 
 # Build shared-types first
-RUN pnpm --filter @pointlock/shared-types build
+RUN pnpm --filter @pick-rivals/shared-types build
 
 # Generate Prisma client and build API
 RUN cd apps/api && npx prisma generate && pnpm build

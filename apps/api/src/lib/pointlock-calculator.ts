@@ -16,12 +16,12 @@
 // - All calculations deterministic and server-side only
 // - Invalid inputs return safe defaults with error flags
 
-import { PickTier } from '@pointlock/shared-types';
+import { PickTier } from '@pick-rivals/shared-types';
 import {
   COIN_FORMULA,
   POINTS_FORMULA,
   MIN_SLIP_SPEND,
-} from '@pointlock/shared-types';
+} from '@pick-rivals/shared-types';
 
 // ===========================================
 // Constants

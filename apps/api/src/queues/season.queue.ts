@@ -17,7 +17,7 @@ import { SeasonStatus, Rank } from '@prisma/client';
 import {
   RANK_POINTS,
   SEASON_WORKER_CONFIG,
-} from '@pointlock/shared-types';
+} from '@pick-rivals/shared-types';
 import { calculateNewRank, distributeSeasonRewards } from '../services/ranked.service';
 
 // ===========================================

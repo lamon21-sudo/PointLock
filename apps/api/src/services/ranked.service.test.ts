@@ -15,7 +15,7 @@ import {
   RANK_THRESHOLDS,
   RANK_ORDER,
   RANK_DISPLAY,
-} from '@pointlock/shared-types';
+} from '@pick-rivals/shared-types';
 
 // ===========================================
 // Test Utilities

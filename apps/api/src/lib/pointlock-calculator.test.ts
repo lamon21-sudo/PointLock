@@ -3,7 +3,7 @@
 // =====================================================
 
 import { describe, it, expect } from 'vitest';
-import { PickTier } from '@pointlock/shared-types';
+import { PickTier } from '@pick-rivals/shared-types';
 import {
   calculateCoinCost,
   calculatePoints,

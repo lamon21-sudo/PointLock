@@ -21,7 +21,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@pointlock/shared-types':
+      '@pick-rivals/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@prisma/client':
@@ -127,7 +127,7 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.68.0(react@19.1.0))
-      '@pointlock/shared-types':
+      '@pick-rivals/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@react-native-async-storage/async-storage':

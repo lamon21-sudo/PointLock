@@ -11,7 +11,7 @@ COPY packages/shared-types/package.json ./packages/shared-types/
 COPY apps/api/package.json ./apps/api/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy source code
 COPY packages/shared-types ./packages/shared-types

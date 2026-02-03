@@ -214,6 +214,32 @@ export interface MatchCreatedPayload {
   createdAt: string;
 }
 
+// ===========================================
+// Queue Expiration Events (Matchmaking)
+// ===========================================
+
+/**
+ * Payload for queue:expired event.
+ * Sent when a matchmaking queue entry expires after the timeout period.
+ * Client should show notification and remove user from queue UI.
+ */
+export interface QueueExpiredPayload {
+  /** The queue entry ID that expired */
+  queueEntryId: string;
+  /** Game mode that expired */
+  gameMode: string;
+  /** Stake amount that was refunded (in cents) */
+  stakeAmount: number;
+  /** Slip ID that was unlocked */
+  slipId: string | null;
+  /** ISO timestamp when the entry expired */
+  expiredAt: string;
+  /** Time the user spent in queue (milliseconds) */
+  queueDurationMs: number;
+  /** Human-readable reason for expiration */
+  reason: string;
+}
+
 /**
  * Server-to-client event map.
  */
@@ -224,6 +250,7 @@ export interface ServerToClientEvents {
   'event:status': (payload: EventStatusPayload) => void;
   'match:settled': (payload: MatchSettledPayload) => void;
   'match:created': (payload: MatchCreatedPayload) => void;
+  'queue:expired': (payload: QueueExpiredPayload) => void;
   error: (payload: { message: string; code: string }) => void;
 }
 

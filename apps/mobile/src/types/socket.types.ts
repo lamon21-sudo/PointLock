@@ -205,6 +205,25 @@ export interface MatchSettledPayload {
   reason: string;
 }
 
+/**
+ * Payload for queue:expired event.
+ * Sent when a user's queue entry expires without finding a match.
+ */
+export interface QueueExpiredPayload {
+  /** Queue entry ID that expired */
+  queueEntryId: string;
+  /** Game mode the user was queued for */
+  gameMode: string;
+  /** Stake amount that was refunded */
+  stakeAmount: number;
+  /** Whether the stake was successfully refunded */
+  refunded: boolean;
+  /** ISO timestamp when the entry expired */
+  expiredAt: string;
+  /** Reason for expiration (e.g., "MAX_WAIT_TIME_EXCEEDED", "NO_SUITABLE_OPPONENT") */
+  reason: string;
+}
+
 // =====================================================
 // Socket Event Types
 // =====================================================
@@ -218,6 +237,7 @@ export type ServerToClientEvent =
   | 'event:score'
   | 'event:status'
   | 'match:settled'
+  | 'queue:expired'
   | 'error';
 
 /**

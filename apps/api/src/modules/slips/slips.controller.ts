@@ -370,4 +370,66 @@ router.post(
   }
 );
 
+// ===========================================
+// POST /slips/validate-draft
+// Validate draft picks and return current odds
+// Used for offline slip revalidation
+// ===========================================
+
+router.post(
+  '/validate-draft',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const requestId = generateRequestId();
+      const user = getAuthenticatedUser(req);
+      const { picks } = req.body;
+
+      if (!picks || !Array.isArray(picks)) {
+        throw new BadRequestError(
+          'picks array is required',
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      if (picks.length === 0) {
+        throw new BadRequestError(
+          'picks array cannot be empty',
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      if (picks.length > 8) {
+        throw new BadRequestError(
+          'Maximum 8 picks allowed for validation',
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      logger.debug(`[SlipsController] Validate draft request`, {
+        requestId,
+        userId: user.id,
+        pickCount: picks.length,
+      });
+
+      // Validate picks
+      const validatedPicks = await slipsService.validateDraftPicks(picks);
+
+      // Build response
+      const response: ApiResponse<{ picks: typeof validatedPicks }> = {
+        success: true,
+        data: { picks: validatedPicks },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId,
+        },
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;

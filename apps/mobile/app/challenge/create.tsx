@@ -232,6 +232,7 @@ export default function ChallengeCreateScreen() {
               pointValue: pick.pointValue,
               coinCost: (pick as any).coinCost ?? 0,
               tier: (pick as any).tier ?? 1,
+              oddsUpdatedAt: new Date().toISOString(),
               eventInfo: {
                 homeTeamName: pick.event.homeTeamName,
                 homeTeamAbbr: pick.event.homeTeamAbbr || undefined,

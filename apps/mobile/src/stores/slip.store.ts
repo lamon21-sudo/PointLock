@@ -16,11 +16,25 @@ import {
   calculateSlipPotential,
   createDraftPick,
 } from '../types/slip.types';
-import { MIN_SLIP_SPEND } from '@pick-rivals/shared-types';
+import { MIN_SLIP_SPEND, calculatePointValue } from '@pick-rivals/shared-types';
+
+// =====================================================
+// Constants
+// =====================================================
+
+/** Threshold after which pick odds are considered stale (5 minutes) */
+const ODDS_STALE_THRESHOLD_MS = 5 * 60 * 1000;
 
 // =====================================================
 // Types
 // =====================================================
+
+/** Update payload for refreshing pick odds */
+export interface PickOddsUpdate {
+  pickId: string;
+  odds: number;
+  oddsUpdatedAt: string;
+}
 
 interface SlipState {
   /** Current draft picks in the slip builder */
@@ -43,6 +57,12 @@ interface SlipState {
   submittedSlipId: string | null;
   /** Error from the last submission attempt */
   submitError: string | null;
+
+  // =====================================================
+  // Offline/Staleness State
+  // =====================================================
+  /** Whether the device is currently offline */
+  isOffline: boolean;
 
   // =====================================================
   // Actions
@@ -122,6 +142,25 @@ interface SlipState {
    * Clear submission state (for retry or new slip)
    */
   clearSubmissionState: () => void;
+
+  // =====================================================
+  // Offline/Staleness Actions
+  // =====================================================
+
+  /**
+   * Set offline state (used by network status hook)
+   */
+  setOffline: (isOffline: boolean) => void;
+
+  /**
+   * Refresh pick odds after revalidation from server
+   */
+  refreshPickOdds: (updates: PickOddsUpdate[]) => void;
+
+  /**
+   * Mark all picks as potentially stale (e.g., after long offline period)
+   */
+  markPicksStale: () => void;
 }
 
 // =====================================================
@@ -220,6 +259,41 @@ export const selectCoinSpendShortfall = (state: SlipState): number => {
 };
 
 // =====================================================
+// Staleness Selectors
+// =====================================================
+
+/**
+ * Check if any picks have stale odds (older than threshold).
+ */
+export const selectHasStalePicks = (state: SlipState): boolean => {
+  const now = Date.now();
+  return state.picks.some((pick) => {
+    if (pick.isStale) return true;
+    const updatedAt = new Date(pick.oddsUpdatedAt).getTime();
+    return now - updatedAt > ODDS_STALE_THRESHOLD_MS;
+  });
+};
+
+/**
+ * Get count of picks with stale odds.
+ */
+export const selectStalePickCount = (state: SlipState): number => {
+  const now = Date.now();
+  return state.picks.filter((pick) => {
+    if (pick.isStale) return true;
+    const updatedAt = new Date(pick.oddsUpdatedAt).getTime();
+    return now - updatedAt > ODDS_STALE_THRESHOLD_MS;
+  }).length;
+};
+
+/**
+ * Check if device is offline.
+ */
+export const selectIsOffline = (state: SlipState): boolean => {
+  return state.isOffline;
+};
+
+// =====================================================
 // AsyncStorage Adapter
 // =====================================================
 
@@ -270,6 +344,8 @@ export const useSlipStore = create<SlipState>()(
       isSubmitting: false,
       submittedSlipId: null,
       submitError: null,
+      // Offline state
+      isOffline: false,
 
       // =====================================================
       // Actions
@@ -452,6 +528,42 @@ export const useSlipStore = create<SlipState>()(
           submittedSlipId: null,
           submitError: null,
         });
+      },
+
+      // =====================================================
+      // Offline/Staleness Actions
+      // =====================================================
+
+      setOffline: (isOffline: boolean): void => {
+        set({ isOffline });
+      },
+
+      refreshPickOdds: (updates: PickOddsUpdate[]): void => {
+        set((state) => ({
+          picks: state.picks.map((pick) => {
+            const update = updates.find((u) => u.pickId === pick.id);
+            if (update) {
+              return {
+                ...pick,
+                odds: update.odds,
+                oddsUpdatedAt: update.oddsUpdatedAt,
+                pointValue: calculatePointValue(update.odds),
+                isStale: false,
+              };
+            }
+            return pick;
+          }),
+          _version: state._version + 1,
+        }));
+      },
+
+      markPicksStale: (): void => {
+        set((state) => ({
+          picks: state.picks.map((pick) => ({
+            ...pick,
+            isStale: true,
+          })),
+        }));
       },
     }),
     {

@@ -427,6 +427,9 @@ model Match {
   // Optimistic locking to prevent race conditions
   version Int @default(1)
 
+  // Idempotency key for match creation (prevents duplicate matches from same queue entries)
+  matchAttemptKey String? @unique @map("match_attempt_key")
+
   // Timestamp when rake % was locked (immutable after this)
   rakeLockedAt DateTime? @map("rake_locked_at")
 

@@ -26,7 +26,11 @@ import {
   useMatchFound,
   useQueuePosition,
   useQueueError,
+  selectHasExpired,
+  selectExpiredReason,
+  selectRefundedAmount,
 } from '../../src/stores/queue.store';
+import { useQueueSocket } from '../../src/hooks/useQueueSocket';
 
 // =====================================================
 // Constants
@@ -115,6 +119,9 @@ function PulsingIndicator() {
 export default function QueueWaitingScreen() {
   const router = useRouter();
 
+  // Subscribe to queue socket events (queue:expired, match:created)
+  useQueueSocket();
+
   // Queue state
   const inQueue = useQueueStore((state) => state.inQueue);
   const matchId = useQueueStore((state) => state.matchId);
@@ -122,6 +129,12 @@ export default function QueueWaitingScreen() {
   const isLeavingQueue = useQueueStore((state) => state.isLeavingQueue);
   const leaveQueue = useQueueStore((state) => state.leaveQueue);
   const clearError = useQueueStore((state) => state.clearError);
+  const clearExpiredState = useQueueStore((state) => state.clearExpiredState);
+
+  // Expiration state
+  const hasExpired = useQueueStore(selectHasExpired);
+  const expiredReason = useQueueStore(selectExpiredReason);
+  const refundedAmount = useQueueStore(selectRefundedAmount);
 
   // Convenience hooks
   const matchFound = useMatchFound();
@@ -157,12 +170,12 @@ export default function QueueWaitingScreen() {
     }
   }, [matchFound, matchId, router]);
 
-  // Redirect to home if not in queue, no match found, and no error to display
+  // Redirect to home if not in queue, no match found, no error, and not expired
   useEffect(() => {
-    if (!inQueue && !matchFound && !isLeavingQueue && !queueError) {
+    if (!inQueue && !matchFound && !isLeavingQueue && !queueError && !hasExpired) {
       router.replace('/(tabs)');
     }
-  }, [inQueue, matchFound, isLeavingQueue, queueError, router]);
+  }, [inQueue, matchFound, isLeavingQueue, queueError, hasExpired, router]);
 
   // Handle Android back button
   useEffect(() => {
@@ -186,8 +199,32 @@ export default function QueueWaitingScreen() {
     clearError();
   }, [clearError]);
 
+  // Handle retry after expiration
+  const handleRetry = useCallback(() => {
+    clearExpiredState();
+    // Navigate back to play screen to re-enter queue
+    router.replace('/(tabs)/play' as any);
+  }, [clearExpiredState, router]);
+
+  // Handle change settings after expiration
+  const handleChangeSettings = useCallback(() => {
+    clearExpiredState();
+    router.replace('/(tabs)/play' as any);
+  }, [clearExpiredState, router]);
+
+  // Handle go home after expiration
+  const handleGoHome = useCallback(() => {
+    clearExpiredState();
+    router.replace('/(tabs)');
+  }, [clearExpiredState, router]);
+
   // Format display values
   const waitTimeDisplay = formatWaitTime(estimatedWaitMs);
+
+  // Format refunded amount for display
+  const formatCurrency = (cents: number): string => {
+    return `$${(cents / 100).toFixed(2)}`;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -209,54 +246,104 @@ export default function QueueWaitingScreen() {
           </View>
         )}
 
-        {/* Searching Section */}
-        <View style={styles.searchingSection}>
-          <PulsingIndicator />
-          <Text style={styles.statusText}>Searching for opponent...</Text>
-
-          {position !== null && position > 0 && (
-            <Text style={styles.positionText}>
-              Position: {position} in queue
-            </Text>
-          )}
-
-          {waitTimeDisplay && (
-            <Text style={styles.waitText}>{waitTimeDisplay}</Text>
-          )}
-        </View>
-
-        {/* Tips Card */}
-        <GlassCard style={styles.tipsCard} padded>
-          <Text style={styles.tipsTitle}>Tips</Text>
-          {QUEUE_TIPS.map((tip, index) => (
-            <View key={index} style={styles.tipItem}>
+        {/* Expired Section */}
+        {hasExpired ? (
+          <View style={styles.expiredSection}>
+            <View style={styles.expiredIconContainer}>
               <Ionicons
-                name={tip.icon}
-                size={20}
+                name="time-outline"
+                size={48}
                 color={LUXURY_THEME.gold.brushed}
               />
-              <Text style={styles.tipText}>{tip.text}</Text>
             </View>
-          ))}
-        </GlassCard>
+            <Text style={styles.expiredTitle}>Queue Timed Out</Text>
+            <Text style={styles.expiredMessage}>
+              {expiredReason || 'No opponents found within the time limit.'}
+            </Text>
+            {refundedAmount !== null && refundedAmount > 0 && (
+              <Text style={styles.refundText}>
+                Your stake of {formatCurrency(refundedAmount)} has been refunded.
+              </Text>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.expiredActions}>
+              <GoldButton
+                onPress={handleRetry}
+                variant="metallic"
+                size="lg"
+                fullWidth
+              >
+                Try Again
+              </GoldButton>
+              <GoldButton
+                onPress={handleChangeSettings}
+                variant="outline"
+                size="md"
+                fullWidth
+                style={styles.secondaryButton}
+              >
+                Change Settings
+              </GoldButton>
+              <Pressable onPress={handleGoHome} style={styles.goHomeLink}>
+                <Text style={styles.goHomeLinkText}>Return Home</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Searching Section */}
+            <View style={styles.searchingSection}>
+              <PulsingIndicator />
+              <Text style={styles.statusText}>Searching for opponent...</Text>
+
+              {position !== null && position > 0 && (
+                <Text style={styles.positionText}>
+                  Position: {position} in queue
+                </Text>
+              )}
+
+              {waitTimeDisplay && (
+                <Text style={styles.waitText}>{waitTimeDisplay}</Text>
+              )}
+            </View>
+
+            {/* Tips Card */}
+            <GlassCard style={styles.tipsCard} padded>
+              <Text style={styles.tipsTitle}>Tips</Text>
+              {QUEUE_TIPS.map((tip, index) => (
+                <View key={index} style={styles.tipItem}>
+                  <Ionicons
+                    name={tip.icon}
+                    size={20}
+                    color={LUXURY_THEME.gold.brushed}
+                  />
+                  <Text style={styles.tipText}>{tip.text}</Text>
+                </View>
+              ))}
+            </GlassCard>
+          </>
+        )}
 
         {/* Bottom spacer for footer */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Footer with Cancel Button */}
-      <View style={styles.footer}>
-        <GoldButton
-          onPress={handleCancel}
-          variant="outline"
-          size="lg"
-          fullWidth
-          isLoading={isLeavingQueue}
-          disabled={isLeavingQueue}
-        >
-          Cancel Search
-        </GoldButton>
-      </View>
+      {/* Footer with Cancel Button (hidden when expired) */}
+      {!hasExpired && (
+        <View style={styles.footer}>
+          <GoldButton
+            onPress={handleCancel}
+            variant="outline"
+            size="lg"
+            fullWidth
+            isLoading={isLeavingQueue}
+            disabled={isLeavingQueue}
+          >
+            Cancel Search
+          </GoldButton>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -378,5 +465,58 @@ const styles = StyleSheet.create({
   // Bottom spacer
   bottomSpacer: {
     height: 120,
+  },
+
+  // Expired Section
+  expiredSection: {
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingHorizontal: 20,
+  },
+  expiredIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: LUXURY_THEME.surface.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    ...SHADOWS.goldGlowSubtle,
+  },
+  expiredTitle: {
+    color: LUXURY_THEME.text.primary,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  expiredMessage: {
+    color: LUXURY_THEME.text.secondary,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  refundText: {
+    color: LUXURY_THEME.gold.brushed,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  expiredActions: {
+    width: '100%',
+    gap: 12,
+    marginTop: 16,
+  },
+  secondaryButton: {
+    marginTop: 4,
+  },
+  goHomeLink: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  goHomeLinkText: {
+    color: LUXURY_THEME.text.muted,
+    fontSize: 14,
   },
 });

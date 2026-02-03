@@ -61,7 +61,7 @@ function getSocketUrl(): string {
     return 'http://localhost:3000';
   }
 
-  return 'https://api.pickrivals.com';
+  return 'https://pointlock-production.up.railway.app';
 }
 
 // =====================================================

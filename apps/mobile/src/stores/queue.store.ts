@@ -11,6 +11,7 @@ import {
   QueueEntryStatus,
   MatchDetails,
 } from '../services/matchmaking.service';
+import { withRetry } from '../utils/retryWrapper';
 
 // =====================================================
 // Types
@@ -27,6 +28,11 @@ interface QueueState {
   // Match Found
   matchId: string | null;
   matchDetails: MatchDetails | null;
+
+  // Queue Expiration
+  hasExpired: boolean;
+  expiredReason: string | null;
+  refundedAmount: number | null;
 
   // Loading States
   isJoiningQueue: boolean;
@@ -53,9 +59,11 @@ interface QueueState {
   stopPolling: () => void;
   resetQueue: () => void;
   clearError: () => void;
+  clearExpiredState: () => void;
 
   // Internal
   _setMatchFound: (matchId: string, details?: MatchDetails) => void;
+  _setQueueExpired: (reason: string, refundedAmount: number) => void;
 }
 
 // =====================================================
@@ -70,6 +78,11 @@ const initialState = {
   gameMode: null,
   matchId: null,
   matchDetails: null,
+  // Queue Expiration
+  hasExpired: false,
+  expiredReason: null,
+  refundedAmount: null,
+  // Loading States
   isJoiningQueue: false,
   isLeavingQueue: false,
   isFetchingStatus: false,
@@ -89,6 +102,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
   /**
    * Join the quick match queue.
    * Uses POST /matches/quick which delegates to matchmaking service.
+   * Includes retry logic with exponential backoff for transient failures.
    * @returns true if successfully joined queue or matched immediately.
    */
   joinQuickMatch: async (
@@ -106,14 +120,45 @@ export const useQueueStore = create<QueueState>((set, get) => ({
 
     set({ isJoiningQueue: true, queueError: null });
 
+    // Generate idempotency key using slipId as natural boundary
+    // A slip can only be enqueued once (gets locked), so slipId is sufficient
+    // This ensures idempotency even across app restarts
+    const idempotencyKey = `quick_${slipId}`;
+
     try {
-      const response = await MatchmakingService.quickMatch({
-        slipId,
-        stakeAmount,
-        region,
-        // Generate idempotency key to prevent duplicate charges
-        idempotencyKey: `quick_${slipId}_${Date.now()}`,
-      });
+      // Wrap API call with retry logic (exponential backoff)
+      const result = await withRetry(
+        () =>
+          MatchmakingService.quickMatch({
+            slipId,
+            stakeAmount,
+            region,
+            idempotencyKey,
+          }),
+        {
+          maxRetries: 3,
+          baseDelayMs: 1000,
+          maxDelayMs: 8000,
+          onRetry: (attempt, error, delayMs) => {
+            if (__DEV__) {
+              console.log(
+                `[QueueStore] joinQuickMatch retry ${attempt}, waiting ${delayMs}ms:`,
+                error.message
+              );
+            }
+          },
+        }
+      );
+
+      // Check if all retries failed
+      if (!result.success || !result.data) {
+        const message = result.error?.message || 'Failed to join queue after retries';
+        set({ queueError: message, isJoiningQueue: false });
+        console.error('[QueueStore] joinQuickMatch failed after retries:', result.error);
+        return false;
+      }
+
+      const response = result.data;
 
       // Check if immediately matched
       if (response.status === 'MATCHED' && response.match) {
@@ -146,6 +191,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       set({ isJoiningQueue: false });
       return false;
     } catch (error) {
+      // This catch handles errors from withRetry itself (unlikely)
       const message = error instanceof Error ? error.message : 'Failed to join queue';
       set({ queueError: message, isJoiningQueue: false });
       console.error('[QueueStore] joinQuickMatch error:', error);
@@ -294,16 +340,23 @@ export const useQueueStore = create<QueueState>((set, get) => ({
         return;
       }
 
-      // Check for queue expiration/cancellation
-      if (status.entry?.status === 'EXPIRED' || status.entry?.status === 'CANCELLED') {
+      // Check for queue expiration
+      if (status.entry?.status === 'EXPIRED') {
+        get()._setQueueExpired(
+          'Queue search timed out. Your stake has been refunded.',
+          status.entry.stakeAmount ?? 0
+        );
+        return;
+      }
+
+      // Check for queue cancellation
+      if (status.entry?.status === 'CANCELLED') {
         set({
           inQueue: false,
           queueEntry: null,
           position: null,
           estimatedWaitMs: null,
-          queueError: status.entry.status === 'EXPIRED'
-            ? 'Queue entry expired'
-            : 'Queue entry was cancelled',
+          queueError: 'Queue entry was cancelled',
           isFetchingStatus: false,
           lastUpdated: Date.now(),
         });
@@ -326,9 +379,20 @@ export const useQueueStore = create<QueueState>((set, get) => ({
         get().stopPolling();
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch status';
-      set({ queueError: message, isFetchingStatus: false });
-      console.error('[QueueStore] fetchQueueStatus error:', error);
+      // POLLING RESILIENCE: Don't set queueError on transient polling failures
+      // The polling will automatically retry on the next interval
+      // Setting an error here would disrupt the UI for temporary network hiccups
+      set({ isFetchingStatus: false });
+
+      if (__DEV__) {
+        console.warn(
+          '[QueueStore] fetchQueueStatus transient error (will retry):',
+          error instanceof Error ? error.message : error
+        );
+      }
+
+      // Note: We don't stop polling here - let it continue and retry
+      // The next poll cycle may succeed
     }
   },
 
@@ -404,6 +468,10 @@ export const useQueueStore = create<QueueState>((set, get) => ({
 
     set({
       ...initialState,
+      // Ensure expiration state is also reset
+      hasExpired: false,
+      expiredReason: null,
+      refundedAmount: null,
       _pollingInterval: null,
     });
   },
@@ -413,6 +481,18 @@ export const useQueueStore = create<QueueState>((set, get) => ({
    */
   clearError: (): void => {
     set({ queueError: null });
+  },
+
+  /**
+   * Clear expired state (for retry flow).
+   */
+  clearExpiredState: (): void => {
+    set({
+      hasExpired: false,
+      expiredReason: null,
+      refundedAmount: null,
+      queueError: null,
+    });
   },
 
   /**
@@ -437,6 +517,31 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       lastUpdated: Date.now(),
     });
   },
+
+  /**
+   * Internal: Handle queue expired event.
+   * Called when queue entry times out without finding a match.
+   */
+  _setQueueExpired: (reason: string, refundedAmount: number): void => {
+    if (__DEV__) {
+      console.log('[QueueStore] Queue expired!', reason);
+    }
+
+    // Stop polling
+    get().stopPolling();
+
+    set({
+      inQueue: false,
+      hasExpired: true,
+      expiredReason: reason,
+      refundedAmount,
+      queueEntry: null,
+      position: null,
+      estimatedWaitMs: null,
+      isFetchingStatus: false,
+      lastUpdated: Date.now(),
+    });
+  },
 }));
 
 // =====================================================
@@ -450,6 +555,9 @@ export const selectMatchFound = (state: QueueState): boolean => state.matchId !=
 export const selectIsQueueLoading = (state: QueueState): boolean =>
   state.isJoiningQueue || state.isLeavingQueue || state.isFetchingStatus;
 export const selectQueueError = (state: QueueState): string | null => state.queueError;
+export const selectHasExpired = (state: QueueState): boolean => state.hasExpired;
+export const selectExpiredReason = (state: QueueState): string | null => state.expiredReason;
+export const selectRefundedAmount = (state: QueueState): number | null => state.refundedAmount;
 
 // =====================================================
 // Convenience Hooks

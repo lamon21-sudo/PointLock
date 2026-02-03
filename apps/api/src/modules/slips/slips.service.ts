@@ -981,3 +981,192 @@ export async function lockSlip(slipId: string, userId: string): Promise<SlipDeta
     picks: updatedSlip.picks.map(transformPick),
   };
 }
+
+// ===========================================
+// Draft Validation (Offline Revalidation)
+// ===========================================
+
+/**
+ * Input for validating a draft pick
+ */
+export interface ValidateDraftPickInput {
+  sportsEventId: string;
+  pickType: string;
+  selection: string;
+  line?: number | null;
+  currentOdds: number;
+}
+
+/**
+ * Result of validating a draft pick
+ */
+export interface ValidatedDraftPick {
+  sportsEventId: string;
+  pickType: string;
+  selection: string;
+  currentOdds: number;
+  oddsChanged: boolean;
+  isValid: boolean;
+  reason?: string;
+}
+
+/**
+ * Validate draft picks and return current odds.
+ * Used for offline slip revalidation when client comes back online.
+ *
+ * @param picks - Array of draft picks to validate
+ * @returns Validation results for each pick
+ */
+export async function validateDraftPicks(
+  picks: ValidateDraftPickInput[]
+): Promise<ValidatedDraftPick[]> {
+  const results: ValidatedDraftPick[] = [];
+
+  // Fetch all events in one query for efficiency
+  const eventIds = [...new Set(picks.map((p) => p.sportsEventId))];
+  const events = await prisma.sportsEvent.findMany({
+    where: { id: { in: eventIds } },
+    select: {
+      id: true,
+      status: true,
+      homeTeamName: true,
+      awayTeamName: true,
+      scheduledAt: true,
+      oddsData: true,
+    },
+  });
+
+  const eventMap = new Map(events.map((e) => [e.id, e]));
+
+  for (const pick of picks) {
+    const event = eventMap.get(pick.sportsEventId);
+
+    // Event not found
+    if (!event) {
+      results.push({
+        sportsEventId: pick.sportsEventId,
+        pickType: pick.pickType,
+        selection: pick.selection,
+        currentOdds: pick.currentOdds,
+        oddsChanged: false,
+        isValid: false,
+        reason: 'Event not found',
+      });
+      continue;
+    }
+
+    // Event already started or completed
+    if (event.status === EventStatus.LIVE || event.status === EventStatus.COMPLETED) {
+      results.push({
+        sportsEventId: pick.sportsEventId,
+        pickType: pick.pickType,
+        selection: pick.selection,
+        currentOdds: pick.currentOdds,
+        oddsChanged: false,
+        isValid: false,
+        reason: 'Event has already started',
+      });
+      continue;
+    }
+
+    // Event cancelled or postponed
+    if (event.status === EventStatus.CANCELED || event.status === EventStatus.POSTPONED) {
+      results.push({
+        sportsEventId: pick.sportsEventId,
+        pickType: pick.pickType,
+        selection: pick.selection,
+        currentOdds: pick.currentOdds,
+        oddsChanged: false,
+        isValid: false,
+        reason: `Event has been ${event.status.toLowerCase()}`,
+      });
+      continue;
+    }
+
+    // Try to extract current odds from oddsData
+    const currentOdds = extractOddsFromEvent(
+      event.oddsData as Record<string, unknown> | null,
+      pick.pickType,
+      pick.selection,
+      pick.line ?? null
+    );
+
+    // If we can extract odds, check if they changed
+    if (currentOdds !== null) {
+      const oddsChanged = currentOdds !== pick.currentOdds;
+      results.push({
+        sportsEventId: pick.sportsEventId,
+        pickType: pick.pickType,
+        selection: pick.selection,
+        currentOdds,
+        oddsChanged,
+        isValid: true,
+      });
+    } else {
+      // Couldn't extract odds - use client's odds and mark as valid
+      // The server will validate on actual submission
+      results.push({
+        sportsEventId: pick.sportsEventId,
+        pickType: pick.pickType,
+        selection: pick.selection,
+        currentOdds: pick.currentOdds,
+        oddsChanged: false,
+        isValid: true,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Extract odds from event oddsData JSON.
+ * Returns null if odds cannot be extracted.
+ */
+function extractOddsFromEvent(
+  oddsData: Record<string, unknown> | null,
+  pickType: string,
+  selection: string,
+  line: number | null
+): number | null {
+  if (!oddsData) return null;
+
+  try {
+    // Handle different pick types
+    if (pickType === 'moneyline') {
+      const moneyline = oddsData.moneyline as Record<string, unknown> | undefined;
+      if (!moneyline) return null;
+      const odds = moneyline[selection] as number | undefined;
+      return odds ?? null;
+    }
+
+    if (pickType === 'spread') {
+      const spread = oddsData.spread as Record<string, unknown> | undefined;
+      if (!spread) return null;
+      const selectionData = spread[selection] as { odds?: number; line?: number } | undefined;
+      if (!selectionData) return null;
+      // Only return if line matches (or close enough)
+      if (line !== null && selectionData.line !== undefined) {
+        if (Math.abs(selectionData.line - line) > 0.5) return null;
+      }
+      return selectionData.odds ?? null;
+    }
+
+    if (pickType === 'total') {
+      const total = oddsData.total as Record<string, unknown> | undefined;
+      if (!total) return null;
+      const selectionData = total[selection] as { odds?: number; line?: number } | undefined;
+      if (!selectionData) return null;
+      // Only return if line matches (or close enough)
+      if (line !== null && selectionData.line !== undefined) {
+        if (Math.abs(selectionData.line - line) > 0.5) return null;
+      }
+      return selectionData.odds ?? null;
+    }
+
+    // Props are more complex - just return null and let server validate on submission
+    return null;
+  } catch {
+    return null;
+  }
+}

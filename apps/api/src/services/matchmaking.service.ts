@@ -19,7 +19,7 @@ import {
 } from '../utils/errors';
 import { ERROR_CODES } from '@pick-rivals/shared-types';
 import { debitWallet, processRefund, bigIntToNumber } from '../lib/wallet.service';
-import { broadcastMatchCreatedSync } from './live-scores/live-scores.broadcaster';
+import { broadcastMatchCreatedSync, broadcastQueueExpiredSync } from './live-scores/live-scores.broadcaster';
 
 // ===========================================
 // Constants - Timing
@@ -97,6 +97,7 @@ export interface QueueStatusResult {
   entry: QueueEntryBasic | null;
   position?: number;
   estimatedWaitMs?: number;
+  nextActions?: ('RETRY' | 'CHANGE_SETTINGS' | 'CANCEL')[];
 }
 
 interface QueueEntryWithUser {
@@ -144,6 +145,8 @@ interface MatchResult {
   opponentSkillRating: number;
   stakeAmount: bigint;
   createdAt: Date;
+  // Idempotency flag - true if match already existed (skip duplicate notifications)
+  isExisting?: boolean;
 }
 
 // ===========================================
@@ -580,8 +583,9 @@ export async function enqueueForMatchmaking(params: EnqueueParams): Promise<Queu
       const slipSize = slip.totalPicks;
 
       // 5. Generate idempotency key (server-side fallback if client didn't provide)
+      // Use slipId as natural idempotency boundary - a slip can only be enqueued once
       const finalIdempotencyKey =
-        idempotencyKey || `mm-enqueue-${userId}-${slipId}-${Date.now()}`;
+        idempotencyKey || `mm-enqueue-v1-${userId}-${slipId}`;
 
       // 6. DEBIT wallet (CRITICAL: This happens BEFORE queue insertion)
       const entryTx = await debitWallet({
@@ -765,6 +769,7 @@ export async function getQueueStatus(
   userId: string,
   gameMode: GameMode
 ): Promise<QueueStatusResult> {
+  // First check for WAITING entry
   const entry = await prisma.matchmakingQueue.findFirst({
     where: {
       userId,
@@ -773,39 +778,72 @@ export async function getQueueStatus(
     },
   });
 
-  if (!entry) {
-    return { entry: null };
+  if (entry) {
+    // Calculate position in queue (count entries enqueued before this one)
+    const position = await prisma.matchmakingQueue.count({
+      where: {
+        gameMode,
+        status: QueueStatus.WAITING,
+        enqueuedAt: { lt: entry.enqueuedAt },
+      },
+    });
+
+    // Estimate wait time (rough heuristic: 30 seconds per position)
+    const estimatedWaitMs = position * 30_000;
+
+    return {
+      entry: {
+        id: entry.id,
+        userId: entry.userId,
+        gameMode: entry.gameMode,
+        tier: entry.tier,
+        stakeAmount: bigIntToNumber(entry.stakeAmount),
+        skillRating: entry.skillRating,
+        slipSize: entry.slipSize,
+        status: entry.status,
+        enqueuedAt: entry.enqueuedAt,
+        expiresAt: entry.expiresAt,
+        matchId: entry.matchId,
+      },
+      position: position + 1, // 1-indexed for display
+      estimatedWaitMs,
+    };
   }
 
-  // Calculate position in queue (count entries enqueued before this one)
-  const position = await prisma.matchmakingQueue.count({
+  // No WAITING entry - check for recently EXPIRED entry (within 5 minutes)
+  // This helps mobile clients that missed the socket event
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const expiredEntry = await prisma.matchmakingQueue.findFirst({
     where: {
+      userId,
       gameMode,
-      status: QueueStatus.WAITING,
-      enqueuedAt: { lt: entry.enqueuedAt },
+      status: QueueStatus.EXPIRED,
+      // Expired entries have expiresAt in the past - find recent ones
+      expiresAt: { gte: fiveMinutesAgo },
     },
+    orderBy: { expiresAt: 'desc' },
   });
 
-  // Estimate wait time (rough heuristic: 30 seconds per position)
-  const estimatedWaitMs = position * 30_000;
+  if (expiredEntry) {
+    return {
+      entry: {
+        id: expiredEntry.id,
+        userId: expiredEntry.userId,
+        gameMode: expiredEntry.gameMode,
+        tier: expiredEntry.tier,
+        stakeAmount: bigIntToNumber(expiredEntry.stakeAmount),
+        skillRating: expiredEntry.skillRating,
+        slipSize: expiredEntry.slipSize,
+        status: expiredEntry.status,
+        enqueuedAt: expiredEntry.enqueuedAt,
+        expiresAt: expiredEntry.expiresAt,
+        matchId: expiredEntry.matchId,
+      },
+      nextActions: ['RETRY', 'CHANGE_SETTINGS', 'CANCEL'],
+    };
+  }
 
-  return {
-    entry: {
-      id: entry.id,
-      userId: entry.userId,
-      gameMode: entry.gameMode,
-      tier: entry.tier,
-      stakeAmount: bigIntToNumber(entry.stakeAmount),
-      skillRating: entry.skillRating,
-      slipSize: entry.slipSize,
-      status: entry.status,
-      enqueuedAt: entry.enqueuedAt,
-      expiresAt: entry.expiresAt,
-      matchId: entry.matchId,
-    },
-    position: position + 1, // 1-indexed for display
-    estimatedWaitMs,
-  };
+  return { entry: null };
 }
 
 // ===========================================
@@ -950,8 +988,42 @@ async function createMatchFromQueueEntries(
   e2: QueueEntryWithUser,
   workerId: string
 ): Promise<MatchResult> {
+  // Generate deterministic idempotency key from sorted entry IDs
+  // This ensures the same pair of entries always produces the same key
+  const sortedIds = [e1.id, e2.id].sort();
+  const matchAttemptKey = `match-${sortedIds[0]}-${sortedIds[1]}`;
+
   const result = await prisma.$transaction(
     async (tx) => {
+      // 0. IDEMPOTENCY CHECK: Check if match already exists for these entries
+      // This prevents duplicate matches if the same entries are processed twice
+      const existingMatch = await tx.match.findUnique({
+        where: { matchAttemptKey },
+        include: {
+          creator: { select: { username: true, skillRating: true } },
+          opponent: { select: { username: true, skillRating: true } },
+        },
+      });
+
+      if (existingMatch) {
+        // Match already exists - return existing data (idempotent)
+        logger.info(`[Matchmaking] Match ${existingMatch.id} already exists for key ${matchAttemptKey}`);
+        return {
+          matchId: existingMatch.id,
+          entry1Id: e1.id,
+          entry2Id: e2.id,
+          creatorId: existingMatch.creatorId,
+          creatorUsername: existingMatch.creator.username,
+          creatorSkillRating: existingMatch.creator.skillRating,
+          opponentId: existingMatch.opponentId!,
+          opponentUsername: existingMatch.opponent?.username || 'Unknown',
+          opponentSkillRating: existingMatch.opponent?.skillRating || 1000,
+          stakeAmount: existingMatch.stakeAmount,
+          createdAt: existingMatch.createdAt,
+          isExisting: true, // Flag to skip duplicate socket notifications
+        };
+      }
+
       // 1. Verify both entries still WAITING with correct version
       const entry1 = await tx.matchmakingQueue.findUnique({
         where: { id: e1.id },
@@ -983,7 +1055,7 @@ async function createMatchFromQueueEntries(
       const user1 = e1.user;
       const user2 = e2.user;
 
-      // 3. Create Match record
+      // 3. Create Match record with idempotency key
       const matchCreatedAt = new Date();
       const match = await tx.match.create({
         data: {
@@ -996,6 +1068,7 @@ async function createMatchFromQueueEntries(
           opponentSlipId: e2.slipId!,
           creatorEntryTxId: e1.id, // Store queue entry ID for reference
           opponentEntryTxId: e2.id,
+          matchAttemptKey, // Idempotency key for duplicate prevention
           status: MatchStatus.matched,
           matchedAt: matchCreatedAt,
           version: 1,
@@ -1072,20 +1145,26 @@ async function createMatchFromQueueEntries(
   // ===========================================
   // SOCKET NOTIFICATION: Notify both players
   // ===========================================
-  // Fire-and-forget: Match creation succeeded, notification is best-effort
-  // Uses user rooms (user-{userId}) since players aren't in match room yet
-  broadcastMatchCreatedSync({
-    matchId: result.matchId,
-    gameMode: GameMode.QUICK_MATCH,
-    stakeAmount: result.stakeAmount,
-    creatorId: result.creatorId,
-    creatorUsername: result.creatorUsername,
-    creatorSkillRating: result.creatorSkillRating,
-    opponentId: result.opponentId,
-    opponentUsername: result.opponentUsername,
-    opponentSkillRating: result.opponentSkillRating,
-    createdAt: result.createdAt,
-  });
+  // Skip notification if match already existed (idempotent return)
+  // This prevents duplicate notifications when retry logic hits existing match
+  if (!result.isExisting) {
+    // Fire-and-forget: Match creation succeeded, notification is best-effort
+    // Uses user rooms (user-{userId}) since players aren't in match room yet
+    broadcastMatchCreatedSync({
+      matchId: result.matchId,
+      gameMode: GameMode.QUICK_MATCH,
+      stakeAmount: result.stakeAmount,
+      creatorId: result.creatorId,
+      creatorUsername: result.creatorUsername,
+      creatorSkillRating: result.creatorSkillRating,
+      opponentId: result.opponentId,
+      opponentUsername: result.opponentUsername,
+      opponentSkillRating: result.opponentSkillRating,
+      createdAt: result.createdAt,
+    });
+  } else {
+    logger.info(`[Matchmaking] Skipping notification for existing match ${result.matchId}`);
+  }
 
   return result;
 }
@@ -1114,6 +1193,9 @@ async function expireOldEntries(): Promise<number> {
       slipId: true,
       entryTxId: true,
       version: true,
+      stakeAmount: true,
+      gameMode: true,
+      enqueuedAt: true,
     },
   });
 
@@ -1169,6 +1251,18 @@ async function expireOldEntries(): Promise<number> {
 
           expiredCount++;
           logger.info(`[Matchmaking] Expired queue entry ${entry.id} for user ${entry.userId}`);
+
+          // Broadcast queue:expired to user via socket
+          const queueDurationMs = now.getTime() - entry.enqueuedAt.getTime();
+          broadcastQueueExpiredSync(entry.userId, {
+            queueEntryId: entry.id,
+            gameMode: entry.gameMode,
+            stakeAmount: Number(entry.stakeAmount),
+            slipId: entry.slipId,
+            expiredAt: now.toISOString(),
+            queueDurationMs,
+            reason: 'Queue search timed out. No suitable opponents found.',
+          });
         },
         { timeout: TRANSACTION_TIMEOUT_MS }
       );

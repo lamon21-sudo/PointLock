@@ -38,8 +38,8 @@ const getApiUrl = (): string => {
     return 'http://localhost:3000/api/v1';
   }
 
-  // Production URL
-  return 'https://api.pickrivals.com/api/v1';
+  // Production URL (Railway)
+  return 'https://pointlock-production.up.railway.app/api/v1';
 };
 
 const API_URL = getApiUrl();

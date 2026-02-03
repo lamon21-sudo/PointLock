@@ -35,6 +35,10 @@ export interface DraftPick {
   propType?: string;
   /** Event metadata for display purposes */
   eventInfo: DraftPickEventInfo;
+  /** ISO timestamp when odds were last fetched/updated from server */
+  oddsUpdatedAt: string;
+  /** Whether this pick's odds may be stale (outdated) */
+  isStale?: boolean;
 }
 
 /**
@@ -68,6 +72,8 @@ export interface AddPickInput {
   propPlayerName?: string;
   propType?: string;
   eventInfo: DraftPickEventInfo;
+  /** ISO timestamp when odds were fetched (defaults to now) */
+  oddsUpdatedAt?: string;
 }
 
 /**
@@ -170,5 +176,7 @@ export function createDraftPick(input: AddPickInput): DraftPick {
     propPlayerName: input.propPlayerName,
     propType: input.propType,
     eventInfo: input.eventInfo,
+    oddsUpdatedAt: input.oddsUpdatedAt ?? new Date().toISOString(),
+    isStale: false,
   };
 }

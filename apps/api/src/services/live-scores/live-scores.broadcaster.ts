@@ -13,6 +13,7 @@ import {
   EventStatusPayload,
   MatchSettledPayload,
   MatchCreatedPayload,
+  QueueExpiredPayload,
 } from '../../socket/socket.types';
 import { getRedisConnection } from '../../queues/connection';
 
@@ -441,5 +442,52 @@ export function broadcastMatchCreatedSync(matchData: MatchCreatedBroadcastData):
   });
 }
 
+// ===========================================
+// Queue Expiration Broadcasting (Matchmaking)
+// ===========================================
+
+/**
+ * Broadcast queue:expired to a user via their user room.
+ * Called when a matchmaking queue entry expires after timeout.
+ * Fire-and-forget pattern - expiration logic is NOT blocked by notification failures.
+ *
+ * @param userId - User ID whose queue entry expired
+ * @param payload - Queue expiration details
+ */
+export async function broadcastQueueExpired(
+  userId: string,
+  payload: QueueExpiredPayload
+): Promise<void> {
+  const io = await getIo();
+
+  if (!io) {
+    logger.warn('[LiveScoresBroadcaster] Cannot broadcast queue:expired: Socket server not available');
+    return;
+  }
+
+  // Emit to user's personal room
+  const userRoomId = getUserRoomId(userId);
+  io.to(userRoomId).emit('queue:expired', payload);
+
+  logger.info(`[LiveScoresBroadcaster] Queue expired notification sent to ${userRoomId}`, {
+    queueEntryId: payload.queueEntryId,
+    gameMode: payload.gameMode,
+    queueDurationMs: payload.queueDurationMs,
+  });
+}
+
+/**
+ * Synchronous fire-and-forget version for use in matchmaking service.
+ * Queue expiration should NEVER fail due to notification errors.
+ */
+export function broadcastQueueExpiredSync(
+  userId: string,
+  payload: QueueExpiredPayload
+): void {
+  broadcastQueueExpired(userId, payload).catch((error) => {
+    logger.error('[LiveScoresBroadcaster] Failed to broadcast queue:expired:', error);
+  });
+}
+
 // Re-export payload types for convenience
-export type { EventScorePayload, EventStatusPayload, MatchSettledPayload, MatchCreatedPayload };
+export type { EventScorePayload, EventStatusPayload, MatchSettledPayload, MatchCreatedPayload, QueueExpiredPayload };

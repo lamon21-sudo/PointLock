@@ -351,7 +351,7 @@ export function validateListSlipsQuery(input: unknown): ValidationResult<ListSli
   const result = listSlipsQuerySchema.safeParse(input);
 
   if (result.success) {
-    return { success: true, data: result.data };
+    return { success: true, data: result.data as ListSlipsQuery };
   }
 
   return {

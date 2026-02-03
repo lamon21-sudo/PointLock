@@ -118,7 +118,7 @@ async function updateEventProps(eventId: string, props: PlayerPropData[]): Promi
 
   if (!event) return;
 
-  const currentOdds = (event.oddsData || {}) as OddsData;
+  const currentOdds = (event.oddsData || {}) as unknown as OddsData;
   const updatedOdds: OddsData = {
     ...currentOdds,
     provider: currentOdds.provider || 'Mock Sportsbook',
@@ -135,7 +135,7 @@ async function updateEventProps(eventId: string, props: PlayerPropData[]): Promi
   await prisma.sportsEvent.update({
     where: { id: eventId },
     data: {
-      oddsData: updatedOdds,
+      oddsData: JSON.parse(JSON.stringify(updatedOdds)),
       oddsUpdatedAt: new Date(),
     },
   });

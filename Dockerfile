@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# Install system dependencies (OpenSSL for Prisma)
+RUN apk add --no-cache openssl openssl-dev libc6-compat
+
 # Install pnpm
 RUN npm install -g pnpm@9.1.0
 

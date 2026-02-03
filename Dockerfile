@@ -29,5 +29,5 @@ RUN cd apps/api && npx prisma generate && pnpm build
 # Expose port
 EXPOSE 3000
 
-# Start the API
-CMD ["node", "apps/api/dist/index.js"]
+# Start the API (run migrations first, then start server)
+CMD cd apps/api && npx prisma migrate deploy && node dist/index.js

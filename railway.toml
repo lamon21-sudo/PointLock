@@ -2,7 +2,8 @@
 builder = "nixpacks"
 
 [build.nixpacks]
-pkgs = ["nodejs_18", "pnpm"]
+pkgs = ["nodejs_18", "pnpm-9_x"]
+buildPhase = "pnpm install && pnpm --filter @pointlock/shared-types build && pnpm --filter @pointlock/api db:generate && pnpm --filter @pointlock/api build"
 
 [deploy]
-startCommand = "cd apps/api && pnpm run start"
+startCommand = "cd apps/api && node dist/index.js"

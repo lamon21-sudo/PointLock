@@ -19,6 +19,7 @@ import {
   getLiveScoresQueueStatus,
 } from '../../queues/live-scores.queue';
 import { normalizeWebhookPayload } from '../../services/live-scores/providers';
+import type { RawScoreUpdate } from '../../services/live-scores/types';
 import { getLiveEvents } from '../../services/live-scores';
 
 // ===========================================
@@ -67,7 +68,7 @@ export async function handleWebhook(
     // 4. Normalize webhook events
     const normalizedUpdates = normalizeWebhookPayload(
       payload.provider as 'odds-api',
-      payload.events,
+      payload.events as RawScoreUpdate[],
       sport
     );
 

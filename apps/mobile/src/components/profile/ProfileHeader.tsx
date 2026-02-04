@@ -10,7 +10,8 @@ import {
   formatSkillRating,
   getSkillRatingColor,
 } from '../../types/profile.types';
-import { LUXURY_THEME } from '../../constants/theme';
+import { LUXURY_THEME, SHADOWS } from '../../constants/theme';
+import { GlassCard } from '../ui/GlassCard';
 
 // =====================================================
 // Types
@@ -51,7 +52,7 @@ export function ProfileHeader({
   const displayedName = displayName || username;
 
   return (
-    <View style={styles.container}>
+    <GlassCard padded contentStyle={styles.container}>
       {/* Avatar Circle */}
       <View style={styles.avatarContainer}>
         <Text style={styles.avatarEmoji}>{emoji}</Text>
@@ -91,7 +92,7 @@ export function ProfileHeader({
           </Text>
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -102,8 +103,6 @@ export function ProfileHeader({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
   },
   avatarContainer: {
     width: 96,
@@ -113,12 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    // Gold shadow for depth
-    shadowColor: LUXURY_THEME.gold.main,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    ...SHADOWS.goldGlowSubtle,
   },
   avatarEmoji: {
     fontSize: 48,

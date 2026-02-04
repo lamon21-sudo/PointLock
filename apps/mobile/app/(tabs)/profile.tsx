@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -12,7 +12,9 @@ import {
   StatsCard,
   StreaksCard,
   EditProfileModal,
+  MenuRow,
 } from '../../src/components/profile';
+import { GlassCard } from '../../src/components/ui/GlassCard';
 import { LUXURY_THEME } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
@@ -27,7 +29,7 @@ export default function ProfileScreen() {
     profile,
     isLoading: isLoadingProfile,
     updateProfile,
-    isSaving,
+    isUpdating,
     updateError,
   } = useProfile();
 
@@ -57,7 +59,7 @@ export default function ProfileScreen() {
   // Show loading state while auth is initializing
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+      <SafeAreaView style={styles.containerCentered}>
         <ActivityIndicator size="large" color={LUXURY_THEME.gold.main} />
       </SafeAreaView>
     );
@@ -66,56 +68,57 @@ export default function ProfileScreen() {
   // Guest Mode - User not authenticated
   if (!isAuthenticated || !user) {
     return (
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-        <ScrollView className="flex-1 px-4 pt-4">
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Guest Profile Header */}
-          <View className="items-center mb-6">
-            <View className="w-24 h-24 bg-surface rounded-full items-center justify-center mb-3">
-              <Text className="text-5xl">👤</Text>
+          <GlassCard padded style={styles.cardSpacing}>
+            <View style={styles.guestHeaderContent}>
+              <View style={styles.guestAvatarContainer}>
+                <Text style={styles.guestAvatarEmoji}>👤</Text>
+              </View>
+              <Text style={styles.guestDisplayName}>Guest User</Text>
+              <Text style={styles.guestUsername}>Not signed in</Text>
             </View>
-            <Text className="text-white text-xl font-bold">Guest User</Text>
-            <Text className="text-gray-400">Not signed in</Text>
-          </View>
+          </GlassCard>
 
           {/* Sign In Banner */}
-          <View className="bg-surface-elevated rounded-xl p-6 mb-6">
-            <Text className="text-white text-lg font-bold text-center mb-2">
-              Sign in to track your stats
-            </Text>
-            <Text className="text-gray-400 text-sm text-center mb-4">
+          <GlassCard padded style={styles.cardSpacing}>
+            <Text style={styles.signInTitle}>Sign in to track your stats</Text>
+            <Text style={styles.signInSubtitle}>
               Create an account to save your progress, compete on leaderboards, and challenge friends.
             </Text>
             <Pressable
               onPress={handleSignIn}
-              className="bg-primary py-3 px-6 rounded-xl active:opacity-80"
+              style={({ pressed }) => [
+                styles.signInButton,
+                pressed && styles.buttonPressed,
+              ]}
             >
-              <Text className="text-white font-bold text-center">Sign In</Text>
+              <Text style={styles.signInButtonText}>Sign In</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push('/register')}
-              className="py-3 px-6 mt-2 active:opacity-80"
+              style={({ pressed }) => [
+                styles.createAccountButton,
+                pressed && styles.buttonPressed,
+              ]}
             >
-              <Text className="text-primary font-semibold text-center">Create Account</Text>
+              <Text style={styles.createAccountText}>Create Account</Text>
             </Pressable>
-          </View>
+          </GlassCard>
 
           {/* Limited Settings for Guests */}
-          <View className="bg-surface rounded-2xl mb-6">
-            <Pressable className="flex-row justify-between items-center p-4 border-b border-background active:opacity-80">
-              <View className="flex-row items-center">
-                <Text className="text-xl mr-3">⚙️</Text>
-                <Text className="text-white">Settings</Text>
-              </View>
-              <Text className="text-gray-500">›</Text>
-            </Pressable>
-            <Pressable className="flex-row justify-between items-center p-4 active:opacity-80">
-              <View className="flex-row items-center">
-                <Text className="text-xl mr-3">❓</Text>
-                <Text className="text-white">Help & Support</Text>
-              </View>
-              <Text className="text-gray-500">›</Text>
-            </Pressable>
-          </View>
+          <GlassCard style={styles.cardSpacing}>
+            <MenuRow icon="⚙️" label="Settings" onPress={() => {}} />
+            <MenuRow icon="❓" label="Help & Support" onPress={() => {}} isLast />
+          </GlassCard>
+
+          {/* Bottom Spacer */}
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </SafeAreaView>
     );
@@ -125,11 +128,11 @@ export default function ProfileScreen() {
   const displayName = user.displayName || user.username;
 
   // Handle profile update
-  const handleSaveProfile = async (updates: { displayName: string; avatarId: string }) => {
+  const handleSaveProfile = async (updates: { displayName: string; avatarId: string | null }) => {
     try {
       await updateProfile({
         displayName: updates.displayName,
-        avatarUrl: updates.avatarId,
+        avatarUrl: updates.avatarId ?? undefined,
       });
       setIsEditModalVisible(false);
     } catch (error) {
@@ -139,157 +142,315 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
-      <ScrollView className="flex-1 px-4 pt-4">
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profile Header - Show loading state while profile loads */}
         {isLoadingProfile ? (
-          <View className="items-center mb-6 py-8">
+          <GlassCard padded style={styles.headerLoading}>
             <ActivityIndicator size="large" color={LUXURY_THEME.gold.main} />
-          </View>
+          </GlassCard>
         ) : (
-          <ProfileHeader
-            username={user.username}
-            displayName={displayName}
-            avatarUrl={user.avatarUrl}
-            rank={profile?.rank || 'Unranked'}
-            onEditPress={() => setIsEditModalVisible(true)}
-          />
+          <View style={styles.cardSpacing}>
+            <ProfileHeader
+              username={user.username}
+              displayName={displayName}
+              avatarUrl={user.avatarUrl ?? null}
+              skillRating={profile?.skillRating ?? 1000}
+              isOwnProfile={true}
+              onEditPress={() => setIsEditModalVisible(true)}
+            />
+          </View>
         )}
 
         {/* Stats Grid */}
         {isLoadingProfile ? (
-          <View className="flex-row mb-6">
-            <View className="flex-1 bg-surface rounded-xl p-4 mr-2 items-center">
-              <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
-            </View>
-            <View className="flex-1 bg-surface rounded-xl p-4 mx-1 items-center">
-              <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
-            </View>
-            <View className="flex-1 bg-surface rounded-xl p-4 ml-2 items-center">
-              <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
-            </View>
-          </View>
+          <GlassCard padded style={styles.statsLoading}>
+            <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
+          </GlassCard>
         ) : (
-          <StatsCard
-            totalMatches={profile?.stats?.totalMatches ?? 0}
-            wins={profile?.stats?.wins ?? 0}
-            winRate={profile?.stats?.winRate ?? 0}
-          />
+          <View style={styles.cardSpacing}>
+            <StatsCard
+              matchesPlayed={profile?.stats?.matchesPlayed ?? 0}
+              matchesWon={profile?.stats?.matchesWon ?? 0}
+              winRate={profile?.stats?.winRate ?? 0}
+            />
+          </View>
         )}
 
         {/* Wallet Section */}
-        <Pressable
+        <GlassCard
+          pressable
           onPress={() => router.push('/(tabs)/wallet')}
-          className="bg-surface rounded-2xl p-5 mb-4 active:opacity-80"
+          padded
+          style={styles.cardSpacing}
         >
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-white font-bold text-lg">Wallet</Text>
-            <View className="flex-row items-center">
+          <View style={styles.walletHeader}>
+            <Text style={styles.walletTitle}>Wallet</Text>
+            <View style={styles.walletHeaderRight}>
               {isLoadingWallet && !wallet ? (
                 <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
               ) : (
-                <Text className="text-gray-400 text-sm mr-1">View Details</Text>
+                <Text style={styles.viewDetails}>View Details</Text>
               )}
-              <Text className="text-gray-500">›</Text>
+              <Text style={styles.chevron}>›</Text>
             </View>
           </View>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-background">
-            <Text className="text-gray-400">Cash Balance</Text>
-            <Text className="text-white font-semibold">
-              {formatRC(wallet?.paidBalance ?? 0)}
-            </Text>
+          <View style={styles.walletRow}>
+            <Text style={styles.walletLabel}>Cash Balance</Text>
+            <Text style={styles.walletValue}>{formatRC(wallet?.paidBalance ?? 0)}</Text>
           </View>
-          <View className="flex-row justify-between items-center py-3 border-b border-background">
-            <Text className="text-gray-400">Bonus Balance</Text>
-            <Text className="text-white font-semibold">
-              {formatRC(wallet?.bonusBalance ?? 0)}
-            </Text>
+          <View style={styles.walletRow}>
+            <Text style={styles.walletLabel}>Bonus Balance</Text>
+            <Text style={styles.walletValue}>{formatRC(wallet?.bonusBalance ?? 0)}</Text>
           </View>
-          <View className="flex-row justify-between items-center py-3">
-            <Text className="text-white font-bold">Total Balance</Text>
-            <Text className="text-primary font-bold text-lg">
-              {formatRC(wallet?.totalBalance ?? 0)}
-            </Text>
+          <View style={[styles.walletRow, styles.walletTotalRow]}>
+            <Text style={styles.walletTotalLabel}>Total Balance</Text>
+            <Text style={styles.walletTotalValue}>{formatRC(wallet?.totalBalance ?? 0)}</Text>
           </View>
-        </Pressable>
+        </GlassCard>
 
         {/* Streaks */}
         {isLoadingProfile ? (
-          <View className="bg-surface rounded-2xl p-5 mb-4 items-center">
+          <GlassCard padded style={styles.streaksLoading}>
             <ActivityIndicator size="small" color={LUXURY_THEME.gold.main} />
-          </View>
+          </GlassCard>
         ) : (
-          <StreaksCard
-            currentStreak={profile?.stats?.currentStreak ?? 0}
-            bestStreak={profile?.stats?.bestStreak ?? 0}
-          />
+          <View style={styles.cardSpacing}>
+            <StreaksCard
+              currentStreak={profile?.stats?.currentStreak ?? 0}
+              bestStreak={profile?.stats?.bestStreak ?? 0}
+            />
+          </View>
         )}
 
-        {/* Settings */}
-        <View className="bg-surface rounded-2xl mb-4">
-          <Pressable className="flex-row justify-between items-center p-4 border-b border-background active:opacity-80">
-            <View className="flex-row items-center">
-              <Text className="text-xl mr-3">⚙️</Text>
-              <Text className="text-white">Settings</Text>
-            </View>
-            <Text className="text-gray-500">›</Text>
-          </Pressable>
-          <Pressable className="flex-row justify-between items-center p-4 border-b border-background active:opacity-80">
-            <View className="flex-row items-center">
-              <Text className="text-xl mr-3">🔔</Text>
-              <Text className="text-white">Notifications</Text>
-            </View>
-            <Text className="text-gray-500">›</Text>
-          </Pressable>
-          <Pressable
+        {/* Settings Menu */}
+        <GlassCard style={styles.cardSpacing}>
+          <MenuRow icon="⚙️" label="Settings" onPress={() => {}} />
+          <MenuRow icon="🔔" label="Notifications" onPress={() => {}} />
+          <MenuRow
+            icon="📜"
+            label="Transaction History"
             onPress={() => router.push('/(tabs)/wallet')}
-            className="flex-row justify-between items-center p-4 border-b border-background active:opacity-80"
-          >
-            <View className="flex-row items-center">
-              <Text className="text-xl mr-3">📜</Text>
-              <Text className="text-white">Transaction History</Text>
-            </View>
-            <Text className="text-gray-500">›</Text>
-          </Pressable>
-          <Pressable className="flex-row justify-between items-center p-4 active:opacity-80">
-            <View className="flex-row items-center">
-              <Text className="text-xl mr-3">❓</Text>
-              <Text className="text-white">Help & Support</Text>
-            </View>
-            <Text className="text-gray-500">›</Text>
-          </Pressable>
-        </View>
+          />
+          <MenuRow icon="❓" label="Help & Support" onPress={() => {}} isLast />
+        </GlassCard>
 
         {/* Sign Out Button */}
-        <Pressable
-          onPress={handleSignOut}
-          disabled={isSigningOut}
-          className="bg-surface rounded-2xl p-4 mb-6 active:opacity-80"
-        >
-          <View className="flex-row items-center justify-center">
-            {isSigningOut ? (
-              <ActivityIndicator size="small" color="#ef4444" />
-            ) : (
-              <>
-                <Text className="text-xl mr-2">🚪</Text>
-                <Text className="text-red-500 font-semibold">Sign Out</Text>
-              </>
-            )}
-          </View>
-        </Pressable>
+        <GlassCard style={styles.cardSpacing}>
+          {isSigningOut ? (
+            <View style={styles.signOutLoading}>
+              <ActivityIndicator size="small" color={LUXURY_THEME.status.error} />
+            </View>
+          ) : (
+            <MenuRow
+              icon="🚪"
+              label="Sign Out"
+              onPress={handleSignOut}
+              showChevron={false}
+              destructive
+              isLast
+            />
+          )}
+        </GlassCard>
+
+        {/* Bottom Spacer for Tab Bar */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Edit Profile Modal */}
       <EditProfileModal
         visible={isEditModalVisible}
         currentDisplayName={displayName}
-        currentAvatarUrl={user.avatarUrl}
+        currentAvatarId={user.avatarUrl ?? null}
         onSave={handleSaveProfile}
         onCancel={() => setIsEditModalVisible(false)}
-        isSaving={isSaving}
+        isSaving={isUpdating}
         error={updateError}
       />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  // Container
+  container: {
+    flex: 1,
+    backgroundColor: LUXURY_THEME.bg.primary,
+  },
+  containerCentered: {
+    flex: 1,
+    backgroundColor: LUXURY_THEME.bg.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+
+  // Card Spacing
+  cardSpacing: {
+    marginBottom: LUXURY_THEME.spacing.cardGap,
+  },
+
+  // Loading States
+  headerLoading: {
+    minHeight: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsLoading: {
+    minHeight: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  streaksLoading: {
+    minHeight: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Guest Mode
+  guestHeaderContent: {
+    alignItems: 'center',
+  },
+  guestAvatarContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: LUXURY_THEME.surface.raised,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  guestAvatarEmoji: {
+    fontSize: 48,
+  },
+  guestDisplayName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+    marginBottom: 4,
+  },
+  guestUsername: {
+    fontSize: 14,
+    color: LUXURY_THEME.text.secondary,
+  },
+
+  // Sign In Banner
+  signInTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  signInSubtitle: {
+    fontSize: 14,
+    color: LUXURY_THEME.text.secondary,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  signInButton: {
+    backgroundColor: LUXURY_THEME.gold.main,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: LUXURY_THEME.bg.primary,
+  },
+  createAccountButton: {
+    paddingVertical: 12,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  createAccountText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: LUXURY_THEME.gold.main,
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+
+  // Wallet Card
+  walletHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  walletTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+  },
+  walletHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewDetails: {
+    fontSize: 14,
+    color: LUXURY_THEME.text.secondary,
+    marginRight: 4,
+  },
+  chevron: {
+    fontSize: 18,
+    color: LUXURY_THEME.text.muted,
+  },
+  walletRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: LUXURY_THEME.border.muted,
+  },
+  walletLabel: {
+    fontSize: 15,
+    color: LUXURY_THEME.text.secondary,
+  },
+  walletValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: LUXURY_THEME.text.primary,
+  },
+  walletTotalRow: {
+    borderBottomWidth: 0,
+    paddingTop: 12,
+  },
+  walletTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: LUXURY_THEME.text.primary,
+  },
+  walletTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: LUXURY_THEME.gold.main,
+  },
+
+  // Sign Out
+  signOutLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+
+  // Bottom Spacer (matches Home tab)
+  bottomSpacer: {
+    height: 100,
+  },
+});

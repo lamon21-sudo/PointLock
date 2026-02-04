@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LUXURY_THEME } from '../../constants/theme';
+import { GlassCard } from '../ui/GlassCard';
 
 // =====================================================
 // Types
@@ -27,7 +28,7 @@ export function StreaksCard({
   bestStreak,
 }: StreaksCardProps): React.ReactElement {
   return (
-    <View style={styles.container}>
+    <GlassCard padded>
       {/* Card Title */}
       <Text style={styles.title}>Streaks</Text>
 
@@ -51,7 +52,7 @@ export function StreaksCard({
         </View>
         <Text style={styles.streakValue}>{bestStreak}</Text>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -60,19 +61,6 @@ export function StreaksCard({
 // =====================================================
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: LUXURY_THEME.surface.card,
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    // Subtle depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   title: {
     fontSize: 18,
     fontWeight: '700',

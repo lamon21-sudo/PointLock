@@ -15,4 +15,6 @@ export { AvatarSelector } from './AvatarSelector';
 export type { AvatarSelectorProps } from './AvatarSelector';
 
 export { EditProfileModal } from './EditProfileModal';
-export type { EditProfileModalProps } from './EditProfileModal';
+
+export { MenuRow } from './MenuRow';
+export type { MenuRowProps } from './MenuRow';

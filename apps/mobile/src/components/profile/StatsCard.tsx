@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LUXURY_THEME } from '../../constants/theme';
+import { GlassCard } from '../ui/GlassCard';
 
 // =====================================================
 // Types
@@ -30,7 +31,7 @@ export function StatsCard({
   winRate,
 }: StatsCardProps): React.ReactElement {
   return (
-    <View style={styles.container}>
+    <GlassCard contentStyle={styles.content}>
       {/* Matches Played */}
       <View style={styles.statColumn}>
         <Text style={styles.statValue}>{matchesPlayed}</Text>
@@ -54,7 +55,7 @@ export function StatsCard({
         <Text style={styles.statValue}>{winRate.toFixed(0)}%</Text>
         <Text style={styles.statLabel}>Win Rate</Text>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -63,21 +64,11 @@ export function StatsCard({
 // =====================================================
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: LUXURY_THEME.surface.card,
-    borderRadius: 16,
+  content: {
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    // Subtle depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
   },
   statColumn: {
     flex: 1,
@@ -92,7 +83,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   winsValue: {
-    color: LUXURY_THEME.status.success, // Success green for wins
+    color: LUXURY_THEME.status.success,
   },
   statLabel: {
     fontSize: 12,

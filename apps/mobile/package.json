@@ -5,10 +5,10 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
-    "android": "node ../../node_modules/expo/bin/cli.js start --android",
-    "ios": "node ../../node_modules/expo/bin/cli.js start --ios",
-    "web": "node ../../node_modules/expo/bin/cli.js start --web",
-    "build": "node ../../node_modules/expo/bin/cli.js export",
+    "android": "npx expo start --android",
+    "ios": "npx expo start --ios",
+    "web": "npx expo start --web",
+    "build": "npx expo export",
     "lint": "eslint . --ext .ts,.tsx",
     "clean": "rm -rf .expo dist node_modules/.cache"
   },

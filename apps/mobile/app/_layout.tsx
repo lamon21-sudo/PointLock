@@ -13,11 +13,16 @@ import { LUXURY_THEME } from '../src/constants/theme';
 import SocketService from '../src/services/socket.service';
 import { ToastProvider } from '../src/contexts/ToastContext';
 import { ToastContainer } from '../src/components/ui/ToastContainer';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import {
   registerForPushNotifications,
   setupNotificationListeners,
   handleInitialNotification,
 } from '../src/services/push-notification.service';
+
+// Export ErrorBoundary for Expo Router error boundary detection
+// This fixes the "No React error boundary component found" warning
+export { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 // Suppress expected API error logs in LogBox (they still log to console for debugging)
 LogBox.ignoreLogs([
@@ -248,14 +253,16 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <ToastProvider>
-          <StatusBar style="light" />
-          <RootLayoutNav />
-          <ToastContainer />
-        </ToastProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <StatusBar style="light" />
+            <RootLayoutNav />
+            <ToastContainer />
+          </ToastProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

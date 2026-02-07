@@ -1,0 +1,61 @@
+# =====================================================
+# API CI Workflow
+# =====================================================
+# Runs lint, type check, and tests for apps/api
+# Triggered on PRs to master/develop when API-related files change
+
+name: API CI
+
+on:
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - "apps/api/**"
+      - "packages/shared-types/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/api-ci.yml"
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ==================================================
+  # API CI
+  # ==================================================
+  api-ci:
+    name: Lint, Type Check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @pointlock/api db:generate
+
+      - name: Lint
+        run: pnpm --filter @pointlock/api lint
+
+      - name: Type check
+        run: pnpm --filter @pointlock/api exec tsc --noEmit
+
+      - name: Run unit tests
+        run: pnpm --filter @pointlock/api test:unit

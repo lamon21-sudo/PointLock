@@ -16,6 +16,8 @@ export interface InputProps extends TextInputProps {
   labelClassName?: string;
   inputClassName?: string;
   errorClassName?: string;
+  /** testID for E2E testing - applied to the TextInput element */
+  testID?: string;
 }
 
 export const Input = React.forwardRef<TextInput, InputProps>(
@@ -29,6 +31,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
       inputClassName = '',
       errorClassName = '',
       style,
+      testID,
       ...props
     },
     ref
@@ -47,6 +50,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(
 
         <TextInput
           ref={ref}
+          testID={testID}
           className={`
             px-4 py-3 rounded-lg text-base text-text-primary
             bg-surface border

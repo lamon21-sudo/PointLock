@@ -1,0 +1,50 @@
+# =====================================================
+# Auth Flow: Login Invalid Credentials
+# =====================================================
+# Tests: User sees error message for invalid credentials
+
+appId: com.pointlock.app
+name: Login Invalid Credentials
+
+---
+# Launch app fresh
+- launchApp:
+    clearState: true
+
+# Wait for login screen
+- assertVisible:
+    id: "login_screen"
+    timeout: 10000
+
+# Enter invalid email
+- tapOn:
+    id: "login_email_input"
+- inputText: "invalid@nonexistent.com"
+
+# Enter wrong password
+- tapOn:
+    id: "login_password_input"
+- inputText: "WrongPassword123!"
+
+# Hide keyboard
+- hideKeyboard
+
+# Tap login button
+- tapOn:
+    id: "login_submit_button"
+
+# Wait for error message to appear
+- assertVisible:
+    id: "login_error_message"
+    timeout: 10000
+
+# Verify still on login screen (didn't navigate away)
+- assertVisible:
+    id: "login_screen"
+
+# Verify submit button is still visible (form still usable)
+- assertVisible:
+    id: "login_submit_button"
+
+# Take screenshot of error state
+- takeScreenshot: login_error

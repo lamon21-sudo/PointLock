@@ -23,6 +23,7 @@ export const PasswordInput = React.forwardRef<TextInput, PasswordInputProps>(
       inputClassName = '',
       errorClassName = '',
       style,
+      testID,
       ...props
     },
     ref
@@ -47,6 +48,7 @@ export const PasswordInput = React.forwardRef<TextInput, PasswordInputProps>(
         <View className="relative">
           <TextInput
             ref={ref}
+            testID={testID}
             className={`
               px-4 py-3 pr-12 rounded-lg text-base text-white
               bg-surface border

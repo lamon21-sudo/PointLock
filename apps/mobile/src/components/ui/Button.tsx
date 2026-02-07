@@ -16,6 +16,8 @@ export interface ButtonProps extends TouchableOpacityProps {
   children: React.ReactNode;
   fullWidth?: boolean;
   className?: string;
+  /** testID for E2E testing */
+  testID?: string;
 }
 
 export function Button({
@@ -26,6 +28,7 @@ export function Button({
   fullWidth = false,
   disabled,
   className = '',
+  testID,
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
@@ -62,6 +65,7 @@ export function Button({
     <TouchableOpacity
       disabled={isDisabled}
       activeOpacity={0.8}
+      testID={testID}
       className={`
         ${variantStyles[variant]}
         ${sizeStyles[size]}

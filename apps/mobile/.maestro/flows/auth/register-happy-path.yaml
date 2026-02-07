@@ -1,0 +1,81 @@
+# =====================================================
+# Auth Flow: Register Happy Path
+# =====================================================
+# Tests: New user can successfully register
+# Note: Uses timestamp for unique email/username
+
+appId: com.pointlock.app
+name: Register Happy Path
+
+---
+# Launch app fresh
+- launchApp:
+    clearState: true
+
+# Wait for login screen
+- assertVisible:
+    id: "login_screen"
+    timeout: 10000
+
+# Navigate to register screen
+- tapOn:
+    id: "login_register_link"
+
+# Wait for register screen
+- assertVisible:
+    id: "register_screen"
+    timeout: 5000
+
+# Enter unique email (using random to avoid conflicts)
+- tapOn:
+    id: "register_email_input"
+- inputRandomEmail
+
+# Enter unique username
+- tapOn:
+    id: "register_username_input"
+- inputRandomText:
+    length: 10
+
+# Wait for username availability check
+- extendedWaitUntil:
+    visible:
+      id: "register_username_status"
+    timeout: 5000
+
+# Enter password
+- tapOn:
+    id: "register_password_input"
+- inputText: "TestPassword123!"
+
+# Confirm password
+- tapOn:
+    id: "register_confirm_password_input"
+- inputText: "TestPassword123!"
+
+# Hide keyboard
+- hideKeyboard
+
+# Scroll down to see terms checkbox
+- scroll:
+    direction: DOWN
+
+# Accept terms
+- tapOn:
+    id: "register_terms_checkbox"
+
+# Submit registration
+- tapOn:
+    id: "register_submit_button"
+
+# Wait for navigation to home (successful registration)
+- assertVisible:
+    id: "tab_home"
+    timeout: 20000
+
+# Verify tab bar is present
+- assertVisible:
+    id: "tab_events"
+
+# Take success screenshot
+- takeScreenshot: register_success

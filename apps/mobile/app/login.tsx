@@ -18,6 +18,7 @@ import { Button } from '../src/components/ui/Button';
 import { FormError } from '../src/components/auth/FormError';
 import { AuthService } from '../src/services/auth.service';
 import { loginSchema, type LoginFormData } from '../src/schemas/auth.schemas';
+import { TEST_IDS } from '../src/constants/testIds';
 
 /**
  * Login Screen
@@ -59,7 +60,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView testID={TEST_IDS.auth.login.screen} className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -81,7 +82,7 @@ export default function LoginScreen() {
             </View>
 
             {/* Form Error */}
-            <FormError message={apiError} />
+            <FormError message={apiError} testID={TEST_IDS.auth.login.errorMessage} />
 
             {/* Login Form */}
             <View className="space-y-4">
@@ -90,6 +91,7 @@ export default function LoginScreen() {
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    testID={TEST_IDS.auth.login.emailInput}
                     label="Email"
                     placeholder="Enter your email"
                     value={value}
@@ -110,6 +112,7 @@ export default function LoginScreen() {
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <PasswordInput
+                    testID={TEST_IDS.auth.login.passwordInput}
                     label="Password"
                     placeholder="Enter your password"
                     value={value}
@@ -124,6 +127,7 @@ export default function LoginScreen() {
 
               {/* Forgot Password Link */}
               <TouchableOpacity
+                testID={TEST_IDS.auth.login.forgotPasswordLink}
                 className="self-end"
                 activeOpacity={0.7}
                 onPress={() => {
@@ -138,6 +142,7 @@ export default function LoginScreen() {
 
               {/* Login Button */}
               <Button
+                testID={TEST_IDS.auth.login.submitButton}
                 onPress={handleSubmit(onSubmit)}
                 isLoading={isSubmitting}
                 fullWidth
@@ -153,7 +158,7 @@ export default function LoginScreen() {
                 Don't have an account?{' '}
               </Text>
               <Link href={"/register" as any} asChild replace>
-                <TouchableOpacity activeOpacity={0.7}>
+                <TouchableOpacity testID={TEST_IDS.auth.login.registerLink} activeOpacity={0.7}>
                   <Text className="text-primary text-sm font-semibold">
                     Create Account
                   </Text>

@@ -1,0 +1,326 @@
+# =====================================================
+# E2E Tests Workflow
+# =====================================================
+# Runs Maestro E2E tests on iOS and Android
+# Triggered on PRs and pushes to main/develop
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile/**'
+      - 'apps/api/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile/**'
+      - 'apps/api/**'
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Device to test on'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ios-only
+          - android-only
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+  MAESTRO_VERSION: '1.36.0'
+
+jobs:
+  # ==================================================
+  # Setup and Seed Database
+  # ==================================================
+  setup:
+    name: Setup Test Environment
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: pointlock_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: pnpm db:generate
+
+      - name: Push database schema
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/pointlock_e2e
+        run: pnpm db:push
+
+      - name: Seed E2E test data
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/pointlock_e2e
+        run: pnpm db:seed:e2e
+
+  # ==================================================
+  # iOS E2E Tests
+  # ==================================================
+  ios-e2e:
+    name: iOS E2E Tests
+    runs-on: macos-14
+    needs: setup
+    if: ${{ github.event.inputs.device != 'android-only' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - name: 'iPhone SE (3rd generation)'
+            id: 'iphone-se'
+          - name: 'iPhone 14'
+            id: 'iphone-14'
+          - name: 'iPhone 15 Pro Max'
+            id: 'iphone-15-pro-max'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: List available iOS simulators
+        run: xcrun simctl list devices available
+
+      - name: Boot iOS Simulator
+        run: |
+          DEVICE_UDID=$(xcrun simctl list devices available | grep "${{ matrix.device.name }}" | head -1 | grep -oE "[A-F0-9-]{36}")
+          if [ -z "$DEVICE_UDID" ]; then
+            echo "Device not found, creating..."
+            RUNTIME=$(xcrun simctl list runtimes | grep iOS | tail -1 | grep -oE "com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+" )
+            DEVICE_TYPE=$(xcrun simctl list devicetypes | grep "${{ matrix.device.name }}" | grep -oE "com.apple.CoreSimulator.SimDeviceType.[a-zA-Z0-9-]+" | head -1)
+            DEVICE_UDID=$(xcrun simctl create "E2E Test Device" "$DEVICE_TYPE" "$RUNTIME")
+          fi
+          xcrun simctl boot "$DEVICE_UDID" || true
+          echo "SIMULATOR_UDID=$DEVICE_UDID" >> $GITHUB_ENV
+
+      - name: Wait for simulator to boot
+        run: |
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          sleep 5
+
+      - name: Start Expo
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.E2E_API_URL }}
+        run: |
+          npx expo start --ios --no-dev &
+          sleep 30
+
+      - name: Run Maestro E2E Tests
+        working-directory: apps/mobile
+        env:
+          TEST_USER_EMAIL: e2e-test@pointlock.com
+          TEST_USER_PASSWORD: TestPassword123!
+        run: |
+          maestro test --device "$SIMULATOR_UDID" .maestro/flows
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-${{ matrix.device.id }}-results
+          path: |
+            apps/mobile/.maestro/screenshots/
+            ~/.maestro/tests/
+
+  # ==================================================
+  # Android E2E Tests
+  # ==================================================
+  android-e2e:
+    name: Android E2E Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    if: ${{ github.event.inputs.device != 'ios-only' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - name: 'Pixel 4a'
+            api: 33
+            id: 'pixel-4a'
+          - name: 'Pixel 6'
+            api: 34
+            id: 'pixel-6'
+          - name: 'Pixel 7 Pro'
+            api: 34
+            id: 'pixel-7-pro'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.device.api }}-${{ matrix.device.id }}
+
+      - name: Create AVD and generate snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.device.api }}
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.device.name }}
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          TEST_USER_EMAIL: e2e-test@pointlock.com
+          TEST_USER_PASSWORD: TestPassword123!
+          EXPO_PUBLIC_API_URL: ${{ secrets.E2E_API_URL }}
+        with:
+          api-level: ${{ matrix.device.api }}
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.device.name }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            cd apps/mobile
+            npx expo start --android --no-dev &
+            sleep 45
+            maestro test .maestro/flows
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-android-${{ matrix.device.id }}-results
+          path: |
+            apps/mobile/.maestro/screenshots/
+            ~/.maestro/tests/
+
+  # ==================================================
+  # Summary Report
+  # ==================================================
+  report:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [ios-e2e, android-e2e]
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Generate summary
+        run: |
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Device | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          for dir in test-results/maestro-*; do
+            if [ -d "$dir" ]; then
+              device=$(basename "$dir" | sed 's/maestro-//' | sed 's/-results//')
+              if [ -f "$dir/PASSED" ] || ls "$dir"/*.png 2>/dev/null; then
+                echo "| ${device%-*} | ${device#*-} | :white_check_mark: |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| ${device%-*} | ${device#*-} | :x: |" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done

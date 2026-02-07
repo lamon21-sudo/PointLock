@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LUXURY_THEME, SHADOWS } from '../../src/constants/theme';
+import { TEST_IDS } from '../../src/constants/testIds';
 
 type IconName = 'home' | 'calendar' | 'people' | 'trophy' | 'wallet' | 'person';
 
@@ -99,6 +100,7 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
           headerTitle: 'PickRivals',
+          tabBarTestID: TEST_IDS.tabs.home,
         }}
       />
       <Tabs.Screen
@@ -107,6 +109,7 @@ export default function TabLayout() {
           title: 'Events',
           tabBarIcon: ({ focused }) => <TabIcon name="calendar" focused={focused} />,
           headerTitle: 'Events',
+          tabBarTestID: TEST_IDS.tabs.events,
         }}
       />
       <Tabs.Screen
@@ -115,6 +118,7 @@ export default function TabLayout() {
           title: 'Matches',
           tabBarIcon: ({ focused }) => <TabIcon name="people" focused={focused} />,
           headerTitle: 'My Matches',
+          tabBarTestID: TEST_IDS.tabs.matches,
         }}
       />
       <Tabs.Screen
@@ -123,6 +127,7 @@ export default function TabLayout() {
           title: 'Ranks',
           tabBarIcon: ({ focused }) => <TabIcon name="trophy" focused={focused} />,
           headerTitle: 'Leaderboard',
+          tabBarTestID: TEST_IDS.tabs.leaderboard,
         }}
       />
       <Tabs.Screen
@@ -131,6 +136,7 @@ export default function TabLayout() {
           title: 'Wallet',
           tabBarIcon: ({ focused }) => <TabIcon name="wallet" focused={focused} />,
           headerTitle: 'Wallet',
+          tabBarTestID: TEST_IDS.tabs.wallet,
         }}
       />
       <Tabs.Screen
@@ -139,6 +145,7 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ focused }) => <TabIcon name="person" focused={focused} />,
           headerTitle: 'Profile',
+          tabBarTestID: TEST_IDS.tabs.profile,
         }}
       />
     </Tabs>

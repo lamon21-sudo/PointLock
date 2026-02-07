@@ -21,6 +21,7 @@ import { Button } from '../../src/components/ui/Button';
 import { validateStakeAmount } from '../../src/utils/validation';
 import { MatchService } from '../../src/services/match.service';
 import { getSlipById, ApiSlipResponse } from '../../src/services/slip.service';
+import { TEST_IDS } from '../../src/constants/testIds';
 
 // =====================================================
 // Main Component
@@ -151,7 +152,7 @@ export default function ChallengeCreateScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView testID={TEST_IDS.challengeCreate.screen} style={styles.container} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -159,7 +160,7 @@ export default function ChallengeCreateScreen() {
         {/* Slip ID Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Slip</Text>
-          <View style={styles.slipIdCard}>
+          <View testID={TEST_IDS.challengeCreate.slipIdDisplay} style={styles.slipIdCard}>
             <Text style={styles.slipIdLabel}>Slip ID</Text>
             <Text style={styles.slipIdValue}>{slipId.slice(0, 8)}...</Text>
           </View>
@@ -183,7 +184,7 @@ export default function ChallengeCreateScreen() {
 
         {/* Challenge Preview - Only show when stake > 0 */}
         {stakeAmount > 0 && (
-          <View style={styles.section}>
+          <View testID={TEST_IDS.challengeCreate.previewSection} style={styles.section}>
             <ChallengePreview stakeAmount={stakeAmount} matchType={matchType} />
           </View>
         )}
@@ -194,7 +195,7 @@ export default function ChallengeCreateScreen() {
 
       {/* Error Banner */}
       {submitError && (
-        <View style={styles.errorBanner}>
+        <View testID={TEST_IDS.challengeCreate.errorBanner} style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{submitError}</Text>
           <Pressable onPress={() => setSubmitError(null)} hitSlop={8}>
             <Text style={styles.errorDismiss}>✕</Text>
@@ -205,6 +206,7 @@ export default function ChallengeCreateScreen() {
       {/* Submit Button Footer */}
       <View style={styles.footer}>
         <Button
+          testID={TEST_IDS.challengeCreate.submitButton}
           variant="primary"
           size="lg"
           fullWidth

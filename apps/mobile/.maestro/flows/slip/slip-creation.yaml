@@ -1,0 +1,82 @@
+# =====================================================
+# Slip Flow: Create Slip with Picks
+# =====================================================
+# Tests: User can add picks to slip from events screen
+# Prerequisites: User is logged in, test events exist
+
+appId: com.pointlock.app
+name: Slip Creation Flow
+
+---
+# Ensure user is logged in
+- runFlow:
+    file: ../utils/ensure-logged-in.yaml
+
+# Navigate to Events tab
+- tapOn:
+    id: "tab_events"
+
+# Wait for events to load
+- assertVisible:
+    id: "events_screen"
+    timeout: 10000
+
+# Wait for event list to populate (may need network)
+- extendedWaitUntil:
+    visible:
+      id: "events_card_0_spread_home"
+    timeout: 15000
+
+# Add first pick - spread home on first event
+- tapOn:
+    id: "events_card_0_spread_home"
+
+# Verify slip FAB appears with pick count
+- assertVisible:
+    id: "slip_fab"
+    timeout: 3000
+
+# Verify badge shows 1 pick
+- assertVisible:
+    id: "slip_fab_badge"
+
+# Add second pick - moneyline away on first event
+- tapOn:
+    id: "events_card_0_ml_away"
+
+# Verify FAB still visible
+- assertVisible:
+    id: "slip_fab"
+
+# Scroll to see more events if available
+- scroll:
+    direction: DOWN
+
+# Try to add pick from second event if visible
+- runFlow:
+    when:
+      visible:
+        id: "events_card_1_spread_home"
+    commands:
+      - tapOn:
+          id: "events_card_1_spread_home"
+
+# Tap FAB to go to slip review
+- tapOn:
+    id: "slip_fab"
+
+# Verify slip review screen loads
+- assertVisible:
+    id: "slip_review_screen"
+    timeout: 5000
+
+# Verify picks count is displayed
+- assertVisible:
+    id: "slip_review_picks_count"
+
+# Verify lock button is present
+- assertVisible:
+    id: "slip_review_lock_button"
+
+# Take screenshot
+- takeScreenshot: slip_created

@@ -1,0 +1,145 @@
+# =====================================================
+# Match Flow: Complete E2E Journey
+# =====================================================
+# Tests: Full flow from login through challenge creation
+# This is the comprehensive "happy path" test
+
+appId: com.pointlock.app
+name: Full Match Flow E2E
+
+---
+# Step 1: Fresh app launch and login
+- launchApp:
+    clearState: true
+
+# Wait for auth screen
+- assertVisible:
+    id: "login_screen"
+    timeout: 10000
+
+# Login with test user
+- tapOn:
+    id: "login_email_input"
+- inputText: ${TEST_USER_EMAIL}
+
+- tapOn:
+    id: "login_password_input"
+- inputText: ${TEST_USER_PASSWORD}
+
+- hideKeyboard
+
+- tapOn:
+    id: "login_submit_button"
+
+# Wait for home screen
+- assertVisible:
+    id: "tab_home"
+    timeout: 15000
+
+- takeScreenshot: step1_logged_in
+
+# Step 2: Navigate to events
+- tapOn:
+    id: "tab_events"
+
+- assertVisible:
+    id: "events_screen"
+    timeout: 10000
+
+# Wait for events to load
+- extendedWaitUntil:
+    visible:
+      id: "events_card_0_spread_home"
+    timeout: 15000
+
+- takeScreenshot: step2_events_loaded
+
+# Step 3: Add picks to slip
+- tapOn:
+    id: "events_card_0_spread_home"
+
+- assertVisible:
+    id: "slip_fab"
+    timeout: 3000
+
+- tapOn:
+    id: "events_card_0_ml_home"
+
+- takeScreenshot: step3_picks_added
+
+# Step 4: Review slip
+- tapOn:
+    id: "slip_fab"
+
+- assertVisible:
+    id: "slip_review_screen"
+    timeout: 5000
+
+- assertVisible:
+    id: "slip_review_lock_button"
+
+- takeScreenshot: step4_slip_review
+
+# Step 5: Lock slip
+- tapOn:
+    id: "slip_review_lock_button"
+
+- assertVisible:
+    id: "confirmation_modal"
+    timeout: 5000
+
+- tapOn:
+    id: "confirmation_modal_confirm"
+
+- assertVisible:
+    id: "slip_review_success_state"
+    timeout: 15000
+
+- takeScreenshot: step5_slip_locked
+
+# Step 6: Create challenge
+- tapOn:
+    id: "slip_review_create_challenge"
+
+- assertVisible:
+    id: "challenge_create_screen"
+    timeout: 5000
+
+# Select stake
+- tapOn:
+    id: "challenge_create_stake_100"
+    optional: true
+
+- tapOn:
+    id: "challenge_create_submit"
+
+# Step 7: Verify challenge created
+- assertVisible:
+    id: "invite_modal"
+    timeout: 15000
+
+- assertVisible:
+    id: "invite_modal_code"
+
+- takeScreenshot: step6_challenge_created
+
+# Close modal
+- tapOn:
+    id: "invite_modal_close"
+
+# Step 8: Verify match appears in matches list
+- assertVisible:
+    id: "matches_screen"
+    timeout: 5000
+
+# Look for newly created match
+- assertVisible:
+    id: "matches_card_0"
+    timeout: 10000
+
+- takeScreenshot: step7_flow_complete
+
+# Final verification - we completed the full journey
+- assertTrue:
+    condition: true
+    label: "Full E2E flow completed successfully"

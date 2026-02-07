@@ -21,6 +21,7 @@ import { PasswordStrengthIndicator } from '../src/components/auth/PasswordStreng
 import { AuthService } from '../src/services/auth.service';
 import { useDebounce } from '../src/hooks/useDebounce';
 import { registerSchema, type RegisterFormData } from '../src/schemas/auth.schemas';
+import { TEST_IDS } from '../src/constants/testIds';
 
 /**
  * Register Screen
@@ -159,7 +160,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView testID={TEST_IDS.auth.register.screen} className="flex-1 bg-background">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -182,7 +183,7 @@ export default function RegisterScreen() {
             </View>
 
             {/* Form Error */}
-            <FormError message={apiError} />
+            <FormError message={apiError} testID={TEST_IDS.auth.register.errorMessage} />
 
             {/* Registration Form */}
             <View className="space-y-4">
@@ -191,6 +192,7 @@ export default function RegisterScreen() {
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <Input
+                    testID={TEST_IDS.auth.register.emailInput}
                     label="Email"
                     placeholder="Enter your email"
                     value={value}
@@ -212,6 +214,7 @@ export default function RegisterScreen() {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
                     <Input
+                      testID={TEST_IDS.auth.register.usernameInput}
                       label="Username"
                       placeholder="Choose a username"
                       value={value}
@@ -224,7 +227,7 @@ export default function RegisterScreen() {
                       textContentType="username"
                     />
                     {!errors.username && (
-                      <Text className={`text-xs ${getUsernameHelperColor()} -mt-3 mb-3`}>
+                      <Text testID={TEST_IDS.auth.register.usernameStatus} className={`text-xs ${getUsernameHelperColor()} -mt-3 mb-3`}>
                         {getUsernameHelperText()}
                       </Text>
                     )}
@@ -238,6 +241,7 @@ export default function RegisterScreen() {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
                     <PasswordInput
+                      testID={TEST_IDS.auth.register.passwordInput}
                       label="Password"
                       placeholder="Create a password"
                       value={value}
@@ -265,6 +269,7 @@ export default function RegisterScreen() {
                 name="confirmPassword"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <PasswordInput
+                    testID={TEST_IDS.auth.register.confirmPasswordInput}
                     label="Confirm Password"
                     placeholder="Confirm your password"
                     value={value}
@@ -284,6 +289,7 @@ export default function RegisterScreen() {
                 render={({ field: { onChange, value } }) => (
                   <View className="mt-4">
                     <TouchableOpacity
+                      testID={TEST_IDS.auth.register.termsCheckbox}
                       onPress={() => onChange(!value)}
                       activeOpacity={0.7}
                       className="flex-row items-center"
@@ -320,6 +326,7 @@ export default function RegisterScreen() {
 
               {/* Register Button */}
               <Button
+                testID={TEST_IDS.auth.register.submitButton}
                 onPress={handleSubmit(onSubmit)}
                 isLoading={isSubmitting}
                 fullWidth
@@ -335,7 +342,7 @@ export default function RegisterScreen() {
                 Already have an account?{' '}
               </Text>
               <Link href={"/login" as any} asChild replace>
-                <TouchableOpacity activeOpacity={0.7}>
+                <TouchableOpacity testID={TEST_IDS.auth.register.loginLink} activeOpacity={0.7}>
                   <Text className="text-primary text-sm font-semibold">
                     Sign In
                   </Text>

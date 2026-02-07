@@ -23,6 +23,7 @@ import {
   getPickValidationError,
 } from '../../src/utils/slip-mapper';
 import { createAndLockSlip } from '../../src/services/slip.service';
+import { TEST_IDS } from '../../src/constants/testIds';
 
 // =====================================================
 // Main Component
@@ -170,22 +171,22 @@ export default function SlipReviewScreen() {
             headerLeft: () => null, // Hide back button on success
           }}
         />
-        <SafeAreaView style={styles.container} edges={['bottom']}>
-          <View style={styles.successContainer}>
+        <SafeAreaView testID={TEST_IDS.slipReview.screen} style={styles.container} edges={['bottom']}>
+          <View testID={TEST_IDS.slipReview.successState} style={styles.successContainer}>
             <Text style={styles.successEmoji}>🎉</Text>
             <Text style={styles.successTitle}>Slip Locked!</Text>
             <Text style={styles.successMessage}>
               Your picks are locked and ready for a challenge.
             </Text>
-            <View style={styles.slipIdContainer}>
+            <View testID={TEST_IDS.slipReview.slipIdDisplay} style={styles.slipIdContainer}>
               <Text style={styles.slipIdLabel}>Slip ID</Text>
               <Text style={styles.slipIdValue}>{submittedSlipId.slice(0, 8)}...</Text>
             </View>
             <View style={styles.successButtons}>
-              <Pressable style={styles.challengeButton} onPress={handleCreateChallenge}>
+              <Pressable testID={TEST_IDS.slipReview.createChallengeButton} style={styles.challengeButton} onPress={handleCreateChallenge}>
                 <Text style={styles.challengeButtonText}>Create Challenge</Text>
               </Pressable>
-              <Pressable style={styles.newSlipButton} onPress={handleNewSlip}>
+              <Pressable testID={TEST_IDS.slipReview.newSlipButton} style={styles.newSlipButton} onPress={handleNewSlip}>
                 <Text style={styles.newSlipButtonText}>Start New Slip</Text>
               </Pressable>
             </View>
@@ -207,8 +208,8 @@ export default function SlipReviewScreen() {
             headerShadowVisible: false,
           }}
         />
-        <SafeAreaView style={styles.container} edges={['bottom']}>
-          <View style={styles.emptyContainer}>
+        <SafeAreaView testID={TEST_IDS.slipReview.screen} style={styles.container} edges={['bottom']}>
+          <View testID={TEST_IDS.slipReview.emptyState} style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>📋</Text>
             <Text style={styles.emptyTitle}>Your Slip is Empty</Text>
             <Text style={styles.emptyMessage}>
@@ -254,9 +255,10 @@ export default function SlipReviewScreen() {
           ),
         }}
       />
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView testID={TEST_IDS.slipReview.screen} style={styles.container} edges={['bottom']}>
         {/* Picks List */}
         <FlatList
+          testID={TEST_IDS.slipReview.picksList}
           data={picks}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
@@ -268,7 +270,7 @@ export default function SlipReviewScreen() {
 
         {/* Error Banner */}
         {submitError && !isModalVisible && (
-          <View style={styles.errorBanner}>
+          <View testID={TEST_IDS.slipReview.errorBanner} style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{submitError}</Text>
             <Pressable onPress={() => setSubmissionError('')} hitSlop={8}>
               <Text style={styles.errorDismiss}>✕</Text>
@@ -281,23 +283,24 @@ export default function SlipReviewScreen() {
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{picksCount}</Text>
+              <Text testID={TEST_IDS.slipReview.picksCount} style={styles.statValue}>{picksCount}</Text>
               <Text style={styles.statLabel}>Picks</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{SLIP_MAX_PICKS - picksCount}</Text>
+              <Text testID={TEST_IDS.slipReview.remainingCount} style={styles.statValue}>{SLIP_MAX_PICKS - picksCount}</Text>
               <Text style={styles.statLabel}>Remaining</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={[styles.statValue, styles.pointsValue]}>{pointPotential}</Text>
+              <Text testID={TEST_IDS.slipReview.pointPotential} style={[styles.statValue, styles.pointsValue]}>{pointPotential}</Text>
               <Text style={styles.statLabel}>Point Potential</Text>
             </View>
           </View>
 
           {/* Lock Slip Button */}
           <Pressable
+            testID={TEST_IDS.slipReview.lockSlipButton}
             style={[styles.submitButton, (isSubmitting || hasInvalidPicks) && styles.submitButtonDisabled]}
             onPress={handleLockPress}
             disabled={isSubmitting || hasInvalidPicks}

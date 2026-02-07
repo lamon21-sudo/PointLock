@@ -1,0 +1,54 @@
+# =====================================================
+# Slip Flow: Lock Slip
+# =====================================================
+# Tests: User can lock slip and see confirmation
+# Prerequisites: Slip has at least 1 pick
+
+appId: com.pointlock.app
+name: Lock Slip Flow
+
+---
+# First create a slip with picks
+- runFlow:
+    file: slip-creation.yaml
+
+# On slip review screen, verify lock button is visible
+- assertVisible:
+    id: "slip_review_lock_button"
+    timeout: 5000
+
+# Tap lock button
+- tapOn:
+    id: "slip_review_lock_button"
+
+# Confirmation modal should appear
+- assertVisible:
+    id: "confirmation_modal"
+    timeout: 5000
+
+# Verify confirm button is present
+- assertVisible:
+    id: "confirmation_modal_confirm"
+
+# Tap confirm to lock the slip
+- tapOn:
+    id: "confirmation_modal_confirm"
+
+# Wait for success state (API call + UI update)
+- assertVisible:
+    id: "slip_review_success_state"
+    timeout: 15000
+
+# Verify slip ID is displayed
+- assertVisible:
+    id: "slip_review_slip_id"
+
+# Verify action buttons are present
+- assertVisible:
+    id: "slip_review_create_challenge"
+
+- assertVisible:
+    id: "slip_review_new_slip"
+
+# Take screenshot of locked slip
+- takeScreenshot: slip_locked_success

@@ -15,6 +15,7 @@ import {
 } from '../../stores/slip.store';
 import { SLIP_MAX_PICKS } from '../../types/slip.types';
 import { LUXURY_THEME } from '../../constants/theme';
+import { TEST_IDS } from '../../constants/testIds';
 
 // =====================================================
 // Types
@@ -143,6 +144,7 @@ export function SlipFAB({ onPress }: SlipFABProps): React.ReactElement | null {
       pointerEvents={picksCount > 0 ? 'auto' : 'none'}
     >
       <Pressable
+        testID={TEST_IDS.slip.fab}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -160,6 +162,7 @@ export function SlipFAB({ onPress }: SlipFABProps): React.ReactElement | null {
 
         {/* Count badge */}
         <Animated.View
+          testID={TEST_IDS.slip.fabBadge}
           style={[
             styles.badge,
             isSlipFull && styles.badgeFull,

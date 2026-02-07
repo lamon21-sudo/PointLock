@@ -1,0 +1,62 @@
+# =====================================================
+# Utility: Ensure User is Logged In
+# =====================================================
+# Checks auth state and logs in if needed
+# Call this at the start of flows that require authentication
+
+appId: com.pointlock.app
+name: Ensure Logged In
+
+---
+# Check if already on home (logged in)
+- runFlow:
+    when:
+      visible:
+        id: "tab_home"
+    commands:
+      - assertTrue:
+          condition: true
+          label: "Already logged in"
+
+# If on login screen, perform login
+- runFlow:
+    when:
+      visible:
+        id: "login_screen"
+    commands:
+      - tapOn:
+          id: "login_email_input"
+      - inputText: ${TEST_USER_EMAIL}
+      - tapOn:
+          id: "login_password_input"
+      - inputText: ${TEST_USER_PASSWORD}
+      - hideKeyboard
+      - tapOn:
+          id: "login_submit_button"
+      - assertVisible:
+          id: "tab_home"
+          timeout: 15000
+
+# If on register screen, navigate to login first
+- runFlow:
+    when:
+      visible:
+        id: "register_screen"
+    commands:
+      - tapOn:
+          id: "register_login_link"
+      - assertVisible:
+          id: "login_screen"
+          timeout: 5000
+      - tapOn:
+          id: "login_email_input"
+      - inputText: ${TEST_USER_EMAIL}
+      - tapOn:
+          id: "login_password_input"
+      - inputText: ${TEST_USER_PASSWORD}
+      - hideKeyboard
+      - tapOn:
+          id: "login_submit_button"
+      - assertVisible:
+          id: "tab_home"
+          timeout: 15000

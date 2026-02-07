@@ -1,0 +1,51 @@
+# =====================================================
+# Auth Flow: Login Happy Path
+# =====================================================
+# Tests: User can successfully login with valid credentials
+# Prerequisites: Test user exists in database (run seed:e2e first)
+
+appId: com.pointlock.app
+name: Login Happy Path
+
+---
+# Launch app fresh
+- launchApp:
+    clearState: true
+
+# Wait for login screen to load
+- assertVisible:
+    id: "login_screen"
+    timeout: 10000
+
+# Enter email
+- tapOn:
+    id: "login_email_input"
+- inputText: ${TEST_USER_EMAIL}
+
+# Enter password
+- tapOn:
+    id: "login_password_input"
+- inputText: ${TEST_USER_PASSWORD}
+
+# Hide keyboard
+- hideKeyboard
+
+# Tap login button
+- tapOn:
+    id: "login_submit_button"
+
+# Wait for navigation to home screen (tab bar visible)
+- assertVisible:
+    id: "tab_home"
+    timeout: 15000
+
+# Verify we're on home screen by checking for events tab
+- assertVisible:
+    id: "tab_events"
+
+# Verify matches tab is visible
+- assertVisible:
+    id: "tab_matches"
+
+# Take success screenshot
+- takeScreenshot: login_success

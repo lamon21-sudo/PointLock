@@ -1,0 +1,25 @@
+# =====================================================
+# Maestro E2E Test Configuration
+# =====================================================
+# Pick Rivals Mobile App E2E Testing
+
+appId: com.pointlock.app
+name: PickRivals E2E Tests
+
+# Default flow settings
+flows:
+  - flows/**/*.yaml
+
+# Test environment configuration
+env:
+  API_URL: http://localhost:3000/api/v1
+  TEST_USER_EMAIL: e2e-test@pointlock.com
+  TEST_USER_PASSWORD: TestPassword123!
+
+# Stability settings
+retries: 2
+waitForIdle: true
+
+# Output directories
+screenshotDir: .maestro/screenshots
+recordingDir: .maestro/recordings

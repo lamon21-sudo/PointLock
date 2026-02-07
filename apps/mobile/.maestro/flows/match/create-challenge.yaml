@@ -1,0 +1,86 @@
+# =====================================================
+# Match Flow: Create Challenge from Locked Slip
+# =====================================================
+# Tests: User can create a PvP challenge after locking slip
+
+appId: com.pointlock.app
+name: Create Challenge Flow
+
+---
+# First lock a slip
+- runFlow:
+    file: ../slip/slip-lock.yaml
+
+# Verify create challenge button is visible
+- assertVisible:
+    id: "slip_review_create_challenge"
+    timeout: 5000
+
+# Tap create challenge button
+- tapOn:
+    id: "slip_review_create_challenge"
+
+# Wait for challenge create screen
+- assertVisible:
+    id: "challenge_create_screen"
+    timeout: 5000
+
+# Verify slip ID is displayed
+- assertVisible:
+    id: "challenge_create_slip_id"
+
+# Select a stake amount (try 100 preset first)
+- runFlow:
+    when:
+      visible:
+        id: "challenge_create_stake_100"
+    commands:
+      - tapOn:
+          id: "challenge_create_stake_100"
+
+# If preset not visible, try a different one
+- runFlow:
+    when:
+      notVisible:
+        id: "challenge_create_stake_100"
+    commands:
+      - tapOn:
+          id: "challenge_create_stake_50"
+          optional: true
+
+# Verify preview section appears
+- assertVisible:
+    id: "challenge_create_preview"
+    timeout: 3000
+
+# Verify submit button is present
+- assertVisible:
+    id: "challenge_create_submit"
+
+# Submit challenge
+- tapOn:
+    id: "challenge_create_submit"
+
+# Wait for invite modal (successful creation)
+- assertVisible:
+    id: "invite_modal"
+    timeout: 15000
+
+# Verify invite code is shown
+- assertVisible:
+    id: "invite_modal_code"
+
+# Take screenshot
+- takeScreenshot: challenge_created
+
+# Close modal
+- tapOn:
+    id: "invite_modal_close"
+
+# Should navigate to matches screen
+- assertVisible:
+    id: "matches_screen"
+    timeout: 5000
+
+# Take final screenshot
+- takeScreenshot: challenge_complete

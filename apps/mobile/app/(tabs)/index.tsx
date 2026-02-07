@@ -68,8 +68,8 @@ export default function HomeScreen() {
   const handleInviteFriend = useCallback(async () => {
     try {
       await Share.share({
-        message: 'Join me on Pick Rivals! Challenge me to head-to-head picks. Download now: https://pickrivals.com/download',
-        title: 'Invite to Pick Rivals',
+        message: 'Join me on PointLock! Challenge me to head-to-head picks. Download now: https://pointlock.com/download',
+        title: 'Invite to PointLock',
       });
     } catch (error) {
       console.error('Share error:', error);

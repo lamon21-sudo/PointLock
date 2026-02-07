@@ -10,7 +10,19 @@
     "web": "npx expo start --web",
     "build": "npx expo export",
     "lint": "eslint . --ext .ts,.tsx",
-    "clean": "rm -rf .expo dist node_modules/.cache"
+    "clean": "rm -rf .expo dist node_modules/.cache",
+    "test:e2e": "maestro test .maestro/flows",
+    "test:e2e:auth": "maestro test .maestro/flows/auth",
+    "test:e2e:slip": "maestro test .maestro/flows/slip",
+    "test:e2e:match": "maestro test .maestro/flows/match",
+    "test:e2e:ios-se": "maestro test --device 'iPhone SE (3rd generation)' .maestro/flows",
+    "test:e2e:ios-14": "maestro test --device 'iPhone 14' .maestro/flows",
+    "test:e2e:ios-15-pro-max": "maestro test --device 'iPhone 15 Pro Max' .maestro/flows",
+    "test:e2e:android-small": "maestro test --device 'Pixel_4a' .maestro/flows",
+    "test:e2e:android-medium": "maestro test --device 'Pixel_6' .maestro/flows",
+    "test:e2e:android-large": "maestro test --device 'Pixel_7_Pro' .maestro/flows",
+    "test:e2e:matrix": "bash scripts/e2e-device-matrix.sh",
+    "test:e2e:matrix:win": "powershell -ExecutionPolicy Bypass -File scripts/e2e-device-matrix.ps1"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

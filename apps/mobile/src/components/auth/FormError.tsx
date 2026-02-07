@@ -4,9 +4,11 @@ import { View, Text, Animated, StyleSheet } from 'react-native';
 interface FormErrorProps {
   message?: string;
   className?: string;
+  /** testID for E2E testing */
+  testID?: string;
 }
 
-export function FormError({ message, className = '' }: FormErrorProps) {
+export function FormError({ message, className = '', testID }: FormErrorProps) {
   // Animated values for entrance
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-10)).current;
@@ -41,6 +43,7 @@ export function FormError({ message, className = '' }: FormErrorProps) {
 
   return (
     <Animated.View
+      testID={testID}
       style={[
         styles.container,
         {

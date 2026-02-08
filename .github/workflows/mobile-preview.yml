@@ -1,0 +1,229 @@
+# =====================================================
+# Mobile Preview Build Workflow
+# =====================================================
+# Triggers EAS preview builds for iOS and Android on PRs
+# Posts build dashboard links as a PR comment
+#
+# Required secrets:
+#   EXPO_TOKEN - Expo access token (https://expo.dev/settings/access-tokens)
+
+name: Mobile Preview
+
+on:
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - "apps/mobile/**"
+      - "packages/shared-types/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/mobile-preview.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: mobile-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ==================================================
+  # EAS Preview Build
+  # ==================================================
+  preview-build:
+    name: EAS Preview Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ------------------------------------------------
+      # Fork safety: secrets are unavailable for fork PRs.
+      # Detect this early and skip with a clear message.
+      # ------------------------------------------------
+      - name: Check for EXPO_TOKEN
+        id: check-token
+        env:
+          HAS_TOKEN: ${{ secrets.EXPO_TOKEN != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::EXPO_TOKEN is not available. Skipping EAS build."
+          fi
+
+      - name: Setup EAS
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # ------------------------------------------------
+      # Queue preview builds on EAS (returns immediately)
+      # JSON output is piped to a file for reliable parsing
+      # ------------------------------------------------
+      - name: Trigger EAS builds
+        id: eas-build
+        if: steps.check-token.outputs.has_token == 'true'
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+
+          eas build \
+            --platform all \
+            --profile preview \
+            --non-interactive \
+            --no-wait \
+            --json \
+            2>eas-build-stderr.log \
+            | tee eas-build-output.json
+
+          # Validate JSON
+          if ! jq empty eas-build-output.json 2>/dev/null; then
+            echo "::error::EAS build did not produce valid JSON output"
+            cat eas-build-stderr.log
+            exit 1
+          fi
+
+          BUILD_COUNT=$(jq 'length' eas-build-output.json)
+          echo "build_count=${BUILD_COUNT}" >> "$GITHUB_OUTPUT"
+
+          # Extract build info and construct dashboard URLs
+          BUILDS_JSON=$(jq -c '[.[] | {
+            id: .id,
+            platform: .platform,
+            status: .status,
+            url: ("https://expo.dev/accounts/" + .project.ownerAccount.name + "/projects/" + .project.slug + "/builds/" + .id)
+          }]' eas-build-output.json)
+
+          echo "builds=${BUILDS_JSON}" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------
+      # Post or update PR comment with build links
+      # Uses HTML marker for idempotent updates
+      # ------------------------------------------------
+      - name: Comment on PR
+        if: steps.check-token.outputs.has_token == 'true' && steps.eas-build.outputs.build_count > 0
+        uses: actions/github-script@v7
+        env:
+          BUILDS_JSON: ${{ steps.eas-build.outputs.builds }}
+        with:
+          script: |
+            const MARKER = '<!-- eas-preview-builds -->';
+            const builds = JSON.parse(process.env.BUILDS_JSON);
+            const sha = context.sha.substring(0, 7);
+
+            const platformName = { IOS: 'iOS', ANDROID: 'Android' };
+            const statusLabel = {
+              NEW: 'Queued', IN_QUEUE: 'Queued',
+              IN_PROGRESS: 'Building', FINISHED: 'Done',
+              ERRORED: 'Error', CANCELED: 'Canceled'
+            };
+
+            const rows = builds.map(b =>
+              `| ${platformName[b.platform] || b.platform} | [${b.id.substring(0, 8)}](${b.url}) | ${statusLabel[b.status] || b.status} |`
+            ).join('\n');
+
+            const body = [
+              MARKER,
+              '### EAS Preview Builds',
+              '',
+              '| Platform | Build | Status |',
+              '|----------|-------|--------|',
+              rows,
+              '',
+              `> Commit: \`${sha}\` · Profile: \`preview\` · Builds queued with \`--no-wait\``,
+              '> Click build links to monitor progress on EAS. Native builds typically take 10\u201330 min.',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes(MARKER)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      # ------------------------------------------------
+      # Fork PRs: post a skip message
+      # ------------------------------------------------
+      - name: Comment on PR (skipped)
+        if: steps.check-token.outputs.has_token == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MARKER = '<!-- eas-preview-builds -->';
+            const body = [
+              MARKER,
+              '### EAS Preview Builds',
+              '',
+              '> **Skipped** \u2014 `EXPO_TOKEN` is not available (expected for fork PRs).',
+              '> A maintainer can trigger preview builds from an internal branch.',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes(MARKER)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

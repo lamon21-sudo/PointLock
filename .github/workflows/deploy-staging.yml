@@ -1,0 +1,94 @@
+# =====================================================
+# Deploy to Staging (Railway)
+# =====================================================
+# Deploys the API to Railway staging environment
+# Triggered on push to develop branch when API-related files change
+
+name: Deploy Staging
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "apps/api/**"
+      - "packages/shared-types/**"
+      - "Dockerfile"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-staging.yml"
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ==================================================
+  # Run tests before deploying
+  # ==================================================
+  test:
+    name: Pre-deploy Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---- Checkout ----
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- Setup pnpm ----
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      # ---- Setup Node.js ----
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      # ---- Install dependencies ----
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ---- Generate Prisma client ----
+      - name: Generate Prisma client
+        run: pnpm --filter @pointlock/api db:generate
+
+      # ---- Lint ----
+      - name: Lint
+        run: pnpm --filter @pointlock/api lint
+
+      # ---- Type check ----
+      - name: Type check
+        run: pnpm --filter @pointlock/api exec tsc --noEmit
+
+      # ---- Unit tests ----
+      - name: Run unit tests
+        run: pnpm --filter @pointlock/api test:unit
+
+  # ==================================================
+  # Deploy to Railway staging
+  # ==================================================
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    needs: test
+    environment: staging
+
+    steps:
+      # ---- Checkout ----
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- Install Railway CLI ----
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      # ---- Deploy to Railway ----
+      - name: Deploy
+        run: railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}

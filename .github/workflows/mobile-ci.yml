@@ -1,0 +1,63 @@
+# =====================================================
+# Mobile CI Workflow
+# =====================================================
+# Runs lint, type check, and Expo doctor for apps/mobile
+# Triggered on PRs to master/develop when mobile-related files change
+
+name: Mobile CI
+
+on:
+  pull_request:
+    branches: [master, develop]
+    paths:
+      - "apps/mobile/**"
+      - "packages/shared-types/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/mobile-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ==================================================
+  # Mobile CI
+  # ==================================================
+  mobile-ci:
+    name: Lint, Type Check & Expo Doctor
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @pointlock/mobile lint
+
+      - name: Type check
+        run: pnpm --filter @pointlock/mobile exec tsc --noEmit
+
+      - name: Expo Doctor
+        continue-on-error: true
+        run: pnpm --filter @pointlock/mobile exec expo doctor

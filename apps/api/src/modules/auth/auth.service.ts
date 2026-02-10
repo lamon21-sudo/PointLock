@@ -216,7 +216,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
       },
     });
 
-    logger.info(`User registered: ${user.id} (${user.email})`);
+    logger.info(`User registered: ${user.id}`);
 
     return {
       user,
@@ -302,7 +302,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     }),
   ]);
 
-  logger.info(`User logged in: ${user.id} (${user.email})`);
+  logger.info(`User logged in: ${user.id}`);
 
   // Handle case where wallet doesn't exist (shouldn't happen with proper registration)
   if (!user.wallet) {

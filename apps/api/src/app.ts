@@ -2,13 +2,15 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import pinoHttp from 'pino-http';
+import * as Sentry from '@sentry/node';
 import { config } from './config';
-import { logger } from './utils/logger';
+import { logger, baseLogger } from './utils/logger';
 import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
 import { AppError } from './utils/errors';
 
 // Import middleware
-import { defaultRateLimiter } from './middleware';
+import { defaultRateLimiter, requestIdMiddleware } from './middleware';
 
 // Import routes
 import healthRoutes from './routes/health.routes';
@@ -55,17 +57,29 @@ app.use(compression());
 // Note: This applies to ALL routes. For route-specific limits, see examples below.
 app.use(defaultRateLimiter);
 
-// Request logging
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  const start = Date.now();
+// Request ID generation/propagation
+app.use(requestIdMiddleware);
 
-  _res.on('finish', () => {
-    const duration = Date.now() - start;
-    logger.info(`${req.method} ${req.path} ${_res.statusCode} - ${duration}ms`);
-  });
-
-  next();
-});
+// Structured request logging (pino-http)
+app.use(pinoHttp({
+  logger: baseLogger,
+  genReqId: (req) => (req as Request).id,
+  customLogLevel: (_req, res, err) => {
+    if (res.statusCode >= 500 || err) return 'error';
+    if (res.statusCode >= 400) return 'warn';
+    return 'info';
+  },
+  serializers: {
+    req: (req) => ({
+      id: req.id,
+      method: req.method,
+      url: req.url,
+    }),
+    res: (res) => ({
+      statusCode: res.statusCode,
+    }),
+  },
+}));
 
 // ===========================================
 // Routes
@@ -89,7 +103,7 @@ app.use('/api/v1/matchmaking', matchmakingRouter);
 app.use('/api/v1/ranked', rankedRoutes);
 
 // Root endpoint
-app.get('/', (_req: Request, res: Response) => {
+app.get('/', (req: Request, res: Response) => {
   const response: ApiResponse<{ message: string; version: string }> = {
     success: true,
     data: {
@@ -98,7 +112,7 @@ app.get('/', (_req: Request, res: Response) => {
     },
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: generateRequestId(),
+      requestId: String(req.id),
     },
   };
   res.json(response);
@@ -108,8 +122,11 @@ app.get('/', (_req: Request, res: Response) => {
 // Error Handling
 // ===========================================
 
+// Sentry error handler (must be before other error handlers)
+Sentry.setupExpressErrorHandler(app);
+
 // 404 handler
-app.use((_req: Request, res: Response) => {
+app.use((req: Request, res: Response) => {
   const response: ApiResponse = {
     success: false,
     error: {
@@ -118,14 +135,18 @@ app.use((_req: Request, res: Response) => {
     },
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: generateRequestId(),
+      requestId: String(req.id),
     },
   };
   res.status(404).json(response);
 });
 
 // Global error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  // Enrich Sentry scope with user/route context (request ID already set in middleware)
+  Sentry.getCurrentScope().setUser({ id: (req as any).user?.id });
+  Sentry.getCurrentScope().setTag('route', req.route?.path || req.path);
+
   logger.error('Unhandled error:', err);
 
   const statusCode = err instanceof AppError ? err.statusCode : 500;
@@ -142,19 +163,11 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     },
     meta: {
       timestamp: new Date().toISOString(),
-      requestId: generateRequestId(),
+      requestId: String(req.id),
     },
   };
 
   res.status(statusCode).json(response);
 });
-
-// ===========================================
-// Helpers
-// ===========================================
-
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
 
 export default app;

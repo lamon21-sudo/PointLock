@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
 import { LUXURY_THEME } from '../constants/theme';
 import { logAppError } from '../utils/error-logger';
 
@@ -248,6 +249,14 @@ export class ErrorBoundary extends Component<
     logAppError(error, {
       errorId: this.state.errorId,
       componentStack: errorInfo.componentStack,
+    });
+
+    // Send to Sentry
+    Sentry.captureException(error, {
+      extra: {
+        errorId: this.state.errorId,
+        componentStack: errorInfo.componentStack,
+      },
     });
 
     // Call optional onError callback

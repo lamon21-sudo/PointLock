@@ -80,6 +80,17 @@ export const config = {
     userTierTtlSeconds: parseInt(process.env.CACHE_USER_TIER_TTL || '300', 10), // 5 min
     playerTierTtlSeconds: parseInt(process.env.CACHE_PLAYER_TIER_TTL || '3600', 10), // 1 hour
   },
+
+  // Sentry Error Tracking
+  sentry: {
+    dsn: process.env.SENTRY_DSN || '',
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+  },
+
+  // Logging
+  logging: {
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+  },
 } as const;
 
 // Validate required environment variables

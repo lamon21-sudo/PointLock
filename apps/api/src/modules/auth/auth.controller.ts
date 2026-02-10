@@ -17,6 +17,7 @@ import {
 import * as authService from './auth.service';
 import { BadRequestError } from '../../utils/errors';
 import { logger } from '../../utils/logger';
+import { trackEvent } from '../../utils/analytics';
 import { usernameCheckRateLimiter, requireAuth } from '../../middleware';
 import { prisma } from '../../lib/prisma';
 
@@ -69,6 +70,8 @@ router.post(
       // Call service
       const result = await authService.register(validation.data);
 
+      trackEvent({ name: 'user.registered', userId: result.user.id });
+
       // Format response
       const response: ApiResponse<AuthResponse> = {
         success: true,
@@ -115,6 +118,8 @@ router.post(
       // Call service
       const result = await authService.login(validation.data);
 
+      trackEvent({ name: 'user.login_success', userId: result.user.id });
+
       // Format response
       const response: ApiResponse<AuthResponse> = {
         success: true,
@@ -135,6 +140,9 @@ router.post(
 
       res.status(200).json(response);
     } catch (error) {
+      if (error instanceof BadRequestError) {
+        trackEvent({ name: 'user.login_failed' });
+      }
       next(error);
     }
   }

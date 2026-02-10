@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import * as Sentry from '@sentry/react-native';
+import Constants from 'expo-constants';
 
 import { useAuthStore } from '../src/stores/auth.store';
 import { SplashScreen } from '../src/components/SplashScreen';
@@ -19,6 +21,22 @@ import {
   setupNotificationListeners,
   handleInitialNotification,
 } from '../src/services/push-notification.service';
+
+// Initialize Sentry error tracking
+Sentry.init({
+  dsn: Constants.expoConfig?.extra?.sentryDsn || '',
+  environment: Constants.expoConfig?.extra?.sentryEnvironment || 'development',
+  enabled: !__DEV__,
+  tracesSampleRate: 0.1,
+  sendDefaultPii: false,
+  beforeSend(event) {
+    if (event.user) {
+      delete event.user.email;
+      delete event.user.ip_address;
+    }
+    return event;
+  },
+});
 
 // Export ErrorBoundary for Expo Router error boundary detection
 // This fixes the "No React error boundary component found" warning
@@ -251,7 +269,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -266,3 +284,5 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

@@ -1,7 +1,9 @@
 import "dotenv/config";
+import "./instrument";
 import app from "./app";
 import { config } from "./config";
 import { logger } from "./utils/logger";
+import * as Sentry from "@sentry/node";
 import { disconnectPrisma } from "./lib/prisma";
 import {
   closeRedisConnections,
@@ -192,3 +194,16 @@ const gracefulShutdown = async (signal: string) => {
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// ===========================================
+// Unhandled Error Handlers
+// ===========================================
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception", error);
+  Sentry.close(2000).then(() => process.exit(1)).catch(() => process.exit(1));
+});

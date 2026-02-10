@@ -9,6 +9,7 @@ import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
 import { requireAuth, optionalAuth, getAuthenticatedUser } from '../../middleware';
 import { validateRequest } from '../../middleware/validation.middleware';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
+import { trackEvent } from '../../utils/analytics';
 import {
   createMatch,
   joinMatch,
@@ -73,6 +74,8 @@ router.post(
       const matchData = req.body;
 
       const match = await createMatch(user.id, matchData);
+
+      trackEvent({ name: 'match.created', userId: user.id });
 
       const response: ApiResponse<MatchDetails> = {
         success: true,
@@ -254,6 +257,8 @@ router.post(
       }
 
       const match = await joinMatch(id, user.id, slipId);
+
+      trackEvent({ name: 'match.joined', userId: user.id, properties: { matchId: id } });
 
       const response: ApiResponse<MatchDetails> = {
         success: true,

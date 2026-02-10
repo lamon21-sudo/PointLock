@@ -2,8 +2,10 @@
  * Error Logger Utility
  *
  * Centralized error logging for the app.
- * Currently a noop in production - integrate with Sentry when ready.
+ * Sends errors to Sentry in production, logs to console in development.
  */
+
+import * as Sentry from '@sentry/react-native';
 
 interface ErrorContext {
   errorId?: string | null;
@@ -16,7 +18,7 @@ interface ErrorContext {
 /**
  * Log application errors for monitoring.
  * In development: logs to console with structured output.
- * In production: noop (ready for Sentry integration).
+ * In production: sends to Sentry.
  *
  * @param error - The error object to log
  * @param context - Additional context about where/how the error occurred
@@ -32,12 +34,10 @@ export function logAppError(error: Error, context?: ErrorContext): void {
     console.groupEnd();
   }
 
-  // TODO: Integrate with Sentry or error monitoring service
-  // Example Sentry integration:
-  // Sentry.captureException(error, {
-  //   extra: context,
-  //   tags: { errorId: context?.errorId },
-  // });
+  Sentry.captureException(error, {
+    extra: context as Record<string, unknown>,
+    tags: context?.errorId ? { errorId: String(context.errorId) } : undefined,
+  });
 }
 
 /**
@@ -54,7 +54,10 @@ export function logAppWarning(
     console.warn('[ErrorLogger] Warning:', message, context);
   }
 
-  // TODO: Send to monitoring service as warning level
+  Sentry.captureMessage(message, {
+    level: 'warning',
+    extra: context,
+  });
 }
 
 export default logAppError;

@@ -20,6 +20,7 @@ module.exports = {
   expo: {
     name: "POINTLOCK",
     slug: "pointlock",
+    owner: "mondo5",
     version: "0.1.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -57,17 +58,27 @@ module.exports = {
           color: "#D4AF37",
         },
       ],
+      [
+        "@sentry/react-native/expo",
+        {
+          organization: process.env.SENTRY_ORG || "pick-rivals",
+          project: process.env.SENTRY_PROJECT_MOBILE || "pick-rivals-mobile",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
     },
     extra: {
       eas: {
-        projectId: "4c507a93-062e-4a9e-8956-343e6e1d049f",
+        projectId: "09c507a9-2231-4aa8-a690-9c563a7d9d94",
       },
       // API URL for development - uses your local machine's IP
       // This allows physical devices to reach your backend
       apiUrl: process.env.API_URL || `http://${LOCAL_DEV_IP}:3000/api/v1`,
+      // Sentry error tracking
+      sentryDsn: process.env.SENTRY_DSN_MOBILE || '',
+      sentryEnvironment: process.env.SENTRY_ENVIRONMENT || 'development',
     },
   },
 };

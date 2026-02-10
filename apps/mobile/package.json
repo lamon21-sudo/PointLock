@@ -30,6 +30,7 @@
     "@pick-rivals/shared-types": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "^7.1.25",
+    "@sentry/react-native": "^7.12.0",
     "@tanstack/react-query": "^5.60.5",
     "axios": "^1.7.7",
     "debug": "^4.4.3",

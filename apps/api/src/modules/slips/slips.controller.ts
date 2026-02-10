@@ -18,6 +18,7 @@ import {
 import * as slipsService from './slips.service';
 import { BadRequestError, NotFoundError } from '../../utils/errors';
 import { logger } from '../../utils/logger';
+import { trackEvent } from '../../utils/analytics';
 
 const router: Router = Router();
 
@@ -66,6 +67,8 @@ router.post(
 
       // Create slip
       const slip = await slipsService.createSlip(user.id, validation.data);
+
+      trackEvent({ name: 'slip.created', userId: user.id, properties: { pickCount: validation.data.picks.length } });
 
       // Build response
       const response: ApiResponse<SlipDetails> = {
@@ -352,6 +355,8 @@ router.post(
 
       // Lock slip
       const slip = await slipsService.lockSlip(id, user.id);
+
+      trackEvent({ name: 'slip.locked', userId: user.id, properties: { slipId: id } });
 
       // Build response
       const response: ApiResponse<SlipDetails> = {

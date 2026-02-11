@@ -6,7 +6,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
-import { requireAuth, optionalAuth, getAuthenticatedUser } from '../../middleware';
+import { requireAuth, optionalAuth, getAuthenticatedUser, creationRateLimiter } from '../../middleware';
 import { validateRequest } from '../../middleware/validation.middleware';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
 import { trackEvent } from '../../utils/analytics';
@@ -67,6 +67,7 @@ function generateRequestId(): string {
 router.post(
   '/',
   requireAuth,
+  creationRateLimiter,
   validateRequest(createMatchSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -245,6 +246,7 @@ router.get(
 router.post(
   '/:id/join',
   requireAuth,
+  creationRateLimiter,
   validateRequest(joinMatchSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -291,6 +293,7 @@ router.post(
 router.post(
   '/quick',
   requireAuth,
+  creationRateLimiter,
   validateRequest(quickMatchSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -354,6 +357,7 @@ router.post(
 router.post(
   '/random',
   requireAuth,
+  creationRateLimiter,
   validateRequest(randomMatchSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -396,6 +400,7 @@ router.post(
 router.post(
   '/friend/:userId',
   requireAuth,
+  creationRateLimiter,
   validateRequest(challengeFriendSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

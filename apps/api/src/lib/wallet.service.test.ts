@@ -14,7 +14,6 @@ import {
   debitWallet,
   processRefund,
   getTransactionHistory,
-  hasSufficientBalance,
 } from './wallet.service';
 import {
   BadRequestError,
@@ -1241,55 +1240,6 @@ describe('getTransactionHistory', () => {
         take: 10,
         skip: 20,
       })
-    );
-  });
-});
-
-// ===========================================
-// Test: hasSufficientBalance() - DEPRECATED
-// ===========================================
-
-describe('hasSufficientBalance - DEPRECATED', () => {
-  it('returns true when balance >= amount', async () => {
-    const mockWallet = createMockWallet({
-      paidBalance: BigInt(8000),
-      bonusBalance: BigInt(2000),
-    });
-    mockWalletFindUnique.mockResolvedValue(mockWallet);
-
-    const result = await hasSufficientBalance('user-123', BigInt(5000));
-
-    expect(result).toBe(true);
-  });
-
-  it('returns false when balance < amount', async () => {
-    const mockWallet = createMockWallet({
-      paidBalance: BigInt(3000),
-      bonusBalance: BigInt(1000),
-    });
-    mockWalletFindUnique.mockResolvedValue(mockWallet);
-
-    const result = await hasSufficientBalance('user-123', BigInt(5000));
-
-    expect(result).toBe(false);
-  });
-
-  it('returns false when wallet not found', async () => {
-    mockWalletFindUnique.mockResolvedValue(null);
-
-    const result = await hasSufficientBalance('nonexistent-user', BigInt(1000));
-
-    expect(result).toBe(false);
-  });
-
-  it('logs deprecation warning', async () => {
-    const mockWallet = createMockWallet();
-    mockWalletFindUnique.mockResolvedValue(mockWallet);
-
-    await hasSufficientBalance('user-123', BigInt(1000));
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('hasSufficientBalance called - this has TOCTOU vulnerability')
     );
   });
 });

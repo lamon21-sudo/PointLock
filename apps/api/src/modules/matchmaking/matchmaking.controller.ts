@@ -7,7 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ApiResponse } from '@pick-rivals/shared-types';
 import { GameMode } from '@prisma/client';
-import { requireAuth, getAuthenticatedUser } from '../../middleware';
+import { requireAuth, getAuthenticatedUser, creationRateLimiter } from '../../middleware';
 import { validateRequest } from '../../middleware/validation.middleware';
 import {
   enqueueForMatchmaking,
@@ -55,6 +55,7 @@ function bigIntToNumber(value: bigint): number {
 router.post(
   '/queue',
   requireAuth,
+  creationRateLimiter,
   validateRequest(joinQueueSchema),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

@@ -602,6 +602,30 @@ model MatchAuditLog {
 }
 
 // =====================================================
+// ADMIN AUDIT LOGS (General admin action tracking)
+// =====================================================
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  action        String // user_suspended, user_activated, tokens_revoked, wallet_adjusted, user_viewed
+  performedBy   String   @map("performed_by") // Admin user ID
+  targetUserId  String?  @map("target_user_id") // User being acted upon
+  previousState Json     @map("previous_state")
+  newState      Json     @map("new_state")
+  reason        String?  @db.Text
+  metadata      Json     @default("{}")
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([action])
+  @@index([performedBy])
+  @@index([targetUserId])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
+
+// =====================================================
 // SLIPS
 // =====================================================
 

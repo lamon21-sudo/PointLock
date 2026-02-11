@@ -867,39 +867,3 @@ function formatTransactionResult(
     createdAt: tx.createdAt,
   };
 }
-
-// ===========================================
-// DEPRECATED: Do not use in new code
-// ===========================================
-
-/**
- * @deprecated SECURITY WARNING: This function has TOCTOU vulnerability.
- * The balance check and actual debit are not atomic, creating a race condition
- * where two concurrent requests can both pass this check before either debits.
- *
- * DO NOT USE for authorization decisions. Instead, attempt the debit directly
- * and catch InsufficientBalanceError.
- *
- * This function remains only for read-only UI display purposes (e.g., showing
- * "insufficient balance" warning before user clicks submit).
- */
-export async function hasSufficientBalance(
-  userId: string,
-  amount: bigint
-): Promise<boolean> {
-  logger.warn(
-    `hasSufficientBalance called - this has TOCTOU vulnerability. ` +
-      `Consider using try/catch with debitWallet instead.`
-  );
-
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
-    select: { paidBalance: true, bonusBalance: true },
-  });
-
-  if (!wallet) {
-    return false;
-  }
-
-  return wallet.paidBalance + wallet.bonusBalance >= amount;
-}

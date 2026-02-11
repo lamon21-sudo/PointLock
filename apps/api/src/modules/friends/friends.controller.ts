@@ -25,7 +25,7 @@ import {
   PaginatedFriendships,
   FriendshipStatusResult,
 } from './friends.service';
-import { requireAuth, getAuthenticatedUser } from '../../middleware';
+import { requireAuth, getAuthenticatedUser, creationRateLimiter } from '../../middleware';
 import { logger } from '../../utils/logger';
 
 const router: Router = Router();
@@ -175,6 +175,7 @@ router.get(
 router.post(
   '/request/:userId',
   requireAuth,
+  creationRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = getAuthenticatedUser(req);

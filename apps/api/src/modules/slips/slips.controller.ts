@@ -7,6 +7,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
 import { requireAuth, getAuthenticatedUser } from '../../middleware/auth.middleware';
+import { creationRateLimiter } from '../../middleware/rate-limit.middleware';
 import {
   validateCreateSlip,
   validateUpdateSlip,
@@ -44,6 +45,7 @@ function formatValidationErrors(
 router.post(
   '/',
   requireAuth,
+  creationRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const requestId = generateRequestId();

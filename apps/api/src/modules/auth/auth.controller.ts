@@ -18,7 +18,7 @@ import * as authService from './auth.service';
 import { BadRequestError } from '../../utils/errors';
 import { logger } from '../../utils/logger';
 import { trackEvent } from '../../utils/analytics';
-import { usernameCheckRateLimiter, requireAuth } from '../../middleware';
+import { usernameCheckRateLimiter, authRateLimiter, requireAuth } from '../../middleware';
 import { prisma } from '../../lib/prisma';
 
 const router: Router = Router();
@@ -41,6 +41,7 @@ function formatValidationErrors(errors: { path: (string | number)[]; message: st
 
 router.post(
   '/register',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Debug: Log incoming registration request
@@ -103,6 +104,7 @@ router.post(
 
 router.post(
   '/login',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Validate input
@@ -154,6 +156,7 @@ router.post(
 
 router.post(
   '/refresh',
+  authRateLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Validate input

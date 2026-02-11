@@ -2,11 +2,14 @@
 // Rate Limiting Middleware
 // =====================================================
 // Protects endpoints from abuse (brute force, API flooding).
-// Uses sliding window algorithm with in-memory store.
-// For production: Consider Redis-backed store for distributed systems.
+// Uses sliding window algorithm with Redis store in production.
+// Falls back to in-memory store if Redis is unavailable (test environments).
 
 import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
 import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
+import { getRedisConnection } from '../queues/connection';
+import { logger } from '../utils/logger';
 
 // ===========================================
 // Types
@@ -18,6 +21,41 @@ export interface RateLimitConfig {
   message?: string;
   skipSuccessfulRequests?: boolean;
   skipFailedRequests?: boolean;
+  prefix?: string;
+}
+
+// ===========================================
+// Redis Store Helper
+// ===========================================
+
+/**
+ * Creates a Redis store for rate limiting with graceful fallback.
+ * If Redis is unavailable, returns undefined and express-rate-limit
+ * will use its built-in memory store.
+ *
+ * @param prefix - Redis key prefix for this rate limiter
+ * @returns RedisStore instance or undefined (triggers fallback to memory store)
+ */
+function createRedisStore(prefix: string): RedisStore | undefined {
+  try {
+    const client = getRedisConnection();
+    if (!client) {
+      logger.warn(`Redis connection unavailable for rate limiter "${prefix}", using memory store`);
+      return undefined;
+    }
+
+    return new RedisStore({
+      sendCommand: (...args: string[]) => {
+        // IORedis .call() expects: command, ...args
+        // rate-limit-redis sends: [command, ...args]
+        return client.call(args[0], ...args.slice(1)) as unknown as Promise<number>;
+      },
+      prefix: `rl:${prefix}:`,
+    });
+  } catch (error) {
+    logger.error(`Failed to create Redis store for rate limiter "${prefix}":`, error);
+    return undefined; // Falls back to built-in memory store
+  }
 }
 
 // ===========================================
@@ -33,6 +71,7 @@ export const defaultRateLimiter: RateLimitRequestHandler = rateLimit({
   max: 100, // Limit each IP to 100 requests per window
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  store: createRedisStore('default'),
   handler: (_req, res) => {
     const response: ApiResponse = {
       success: false,
@@ -60,6 +99,7 @@ export const authRateLimiter: RateLimitRequestHandler = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful login/register towards limit
+  store: createRedisStore('auth'),
   handler: (_req, res) => {
     const response: ApiResponse = {
       success: false,
@@ -86,6 +126,7 @@ export const creationRateLimiter: RateLimitRequestHandler = rateLimit({
   max: 10, // Limit each IP to 10 requests per window
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRedisStore('creation'),
   handler: (_req, res) => {
     const response: ApiResponse = {
       success: false,
@@ -114,6 +155,7 @@ export const usernameCheckRateLimiter: RateLimitRequestHandler = rateLimit({
   max: 20, // Limit each IP to 20 requests per window
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRedisStore('username'),
   handler: (_req, res) => {
     const response: ApiResponse = {
       success: false,
@@ -141,6 +183,7 @@ export const allowanceClaimRateLimiter: RateLimitRequestHandler = rateLimit({
   max: 10, // Limit each IP to 10 claim attempts per hour
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRedisStore('allowance'),
   handler: (_req, res) => {
     const response: ApiResponse = {
       success: false,
@@ -182,6 +225,7 @@ export function createRateLimiter(options: RateLimitConfig): RateLimitRequestHan
     message = 'Too many requests. Please try again later.',
     skipSuccessfulRequests = false,
     skipFailedRequests = false,
+    prefix,
   } = options;
 
   return rateLimit({
@@ -191,6 +235,7 @@ export function createRateLimiter(options: RateLimitConfig): RateLimitRequestHan
     legacyHeaders: false,
     skipSuccessfulRequests,
     skipFailedRequests,
+    store: prefix ? createRedisStore(prefix) : undefined,
     handler: (_req, res) => {
       const response: ApiResponse = {
         success: false,

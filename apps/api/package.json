@@ -39,7 +39,9 @@
     "load:setup:clean": "tsx load/setup-load-test-users.ts --clean",
     "load:validate": "tsx load/validate-setup.ts",
     "load:test": "k6 run load/matchmaking-queue.k6.js",
-    "load:test:json": "k6 run --out json=load-test-results.json load/matchmaking-queue.k6.js"
+    "load:test:json": "k6 run --out json=load-test-results.json load/matchmaking-queue.k6.js",
+    "load:test:critical": "k6 run load/critical-paths.k6.js",
+    "load:test:all": "k6 run load/matchmaking-queue.k6.js && k6 run load/critical-paths.k6.js"
   },
   "dependencies": {
     "@pick-rivals/shared-types": "workspace:*",
@@ -59,6 +61,7 @@
     "jsonwebtoken": "^9.0.2",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "rate-limit-redis": "^4.3.1",
     "socket.io": "^4.8.3",
     "uuid": "^10.0.0",
     "zod": "^3.23.8"

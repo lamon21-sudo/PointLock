@@ -6,6 +6,7 @@
 
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { CheckCircleIcon, XCircleIcon, MinusCircleIcon, CircleIcon } from 'phosphor-react-native';
 import { ApiPickResponse } from '../../services/slip.service';
 import { getPickResultColor, PickResultStatus } from '../../types/api-slip.types';
 
@@ -90,20 +91,20 @@ function formatOdds(odds: number): string {
 }
 
 /**
- * Get result icon based on status
+ * Render result icon based on status using Phosphor icons.
  */
-function getResultIcon(status: PickResultStatus | string): string {
+function ResultIcon({ status }: { status: PickResultStatus | string }): React.ReactElement {
   const upperStatus = status.toUpperCase();
   switch (upperStatus) {
     case 'CORRECT':
-      return '✓';
+      return <CheckCircleIcon size={16} color="#22c55e" weight="fill" />;
     case 'INCORRECT':
-      return '✗';
+      return <XCircleIcon size={16} color="#ef4444" weight="fill" />;
     case 'VOID':
-      return '—';
+      return <MinusCircleIcon size={16} color="#6b7280" weight="fill" />;
     case 'PENDING':
     default:
-      return '•';
+      return <CircleIcon size={16} color="#9ca3af" weight="regular" />;
   }
 }
 
@@ -169,7 +170,7 @@ function PickResultItemComponent({
       {/* Result Indicator */}
       {showResult && (
         <View style={[styles.resultIndicator, { backgroundColor: resultColor }]}>
-          <Text style={styles.resultIcon}>{getResultIcon(status)}</Text>
+          <ResultIcon status={status} />
         </View>
       )}
 
@@ -244,11 +245,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
     alignSelf: 'center',
-  },
-  resultIcon: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
   },
   content: {
     flex: 1,

@@ -12,6 +12,7 @@
 // - Loading and error states
 
 import React, { useCallback } from 'react';
+import { SmileyMehIcon } from 'phosphor-react-native';
 import {
   View,
   Text,
@@ -76,7 +77,7 @@ function ErrorState({
 }) {
   return (
     <View style={styles.centerContainer}>
-      <Text style={styles.errorEmoji}>😕</Text>
+      <SmileyMehIcon size={64} color="#9ca3af" weight="duotone" style={{ marginBottom: 16 }} />
       <Text style={styles.errorTitle}>Unable to load profile</Text>
       <Text style={styles.errorMessage}>{error}</Text>
       <Pressable
@@ -276,10 +277,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#9ca3af',
     fontWeight: '500',
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   errorTitle: {
     fontSize: 20,

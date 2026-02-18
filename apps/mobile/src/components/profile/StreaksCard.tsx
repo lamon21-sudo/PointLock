@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { FireIcon, TrophyIcon } from 'phosphor-react-native';
 import { LUXURY_THEME } from '../../constants/theme';
 import { GlassCard } from '../ui/GlassCard';
 
@@ -35,7 +36,7 @@ export function StreaksCard({
       {/* Current Streak */}
       <View style={styles.streakRow}>
         <View style={styles.streakInfo}>
-          <Text style={styles.emoji}>🔥</Text>
+          <FireIcon size={24} color={LUXURY_THEME.gold.main} weight="duotone" style={{ marginRight: 12 }} />
           <Text style={styles.streakLabel}>Current Streak</Text>
         </View>
         <Text style={styles.streakValue}>{currentStreak}</Text>
@@ -47,7 +48,7 @@ export function StreaksCard({
       {/* Best Streak */}
       <View style={styles.streakRow}>
         <View style={styles.streakInfo}>
-          <Text style={styles.emoji}>🏆</Text>
+          <TrophyIcon size={24} color={LUXURY_THEME.gold.main} weight="duotone" style={{ marginRight: 12 }} />
           <Text style={styles.streakLabel}>Best Streak</Text>
         </View>
         <Text style={styles.streakValue}>{bestStreak}</Text>
@@ -78,10 +79,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  emoji: {
-    fontSize: 24,
-    marginRight: 12,
   },
   streakLabel: {
     fontSize: 15,

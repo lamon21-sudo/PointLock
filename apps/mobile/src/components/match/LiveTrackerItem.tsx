@@ -14,6 +14,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet, Platform } from 'react-native';
 import { getPickStatusConfig } from './pick-status.config';
+import { AppIcon } from '../ui/AppIcon';
 import type { ApiPickResponse } from '../../services/slip.service';
 import type { EventScore } from '../../hooks/useMatchSocket';
 import { formatOdds, formatSpread } from '@pick-rivals/shared-types';
@@ -172,9 +173,7 @@ export function LiveTrackerItem({
         ]}
         accessibilityLabel={`Status: ${statusConfig.label}`}
       >
-        <Text style={[styles.statusIcon, { color: statusConfig.color }]}>
-          {statusConfig.icon}
-        </Text>
+        <AppIcon name={statusConfig.iconName} size={16} color={statusConfig.color} />
       </Animated.View>
 
       {/* Pick Info */}
@@ -254,11 +253,6 @@ const styles = StyleSheet.create({
     minWidth: 44,
     minHeight: 44,
   },
-  statusIcon: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
   // Pick Info
   pickInfo: {
     flex: 1,

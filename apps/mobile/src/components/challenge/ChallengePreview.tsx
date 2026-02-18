@@ -6,6 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { GlobeIcon, LockIcon, LightbulbIcon } from 'phosphor-react-native';
 import type { MatchType } from '@pick-rivals/shared-types';
 import { DEFAULT_RAKE_PERCENTAGE } from '@pick-rivals/shared-types';
 
@@ -77,9 +78,16 @@ export function ChallengePreview({
             matchType === 'public' ? styles.badgePublic : styles.badgePrivate,
           ]}
         >
-          <Text style={styles.badgeText}>
-            {matchType === 'public' ? '🌍 Public' : '🔒 Private'}
-          </Text>
+          <View style={styles.badgeContent}>
+            {matchType === 'public' ? (
+              <GlobeIcon size={14} color="#22c55e" weight="duotone" />
+            ) : (
+              <LockIcon size={14} color="#fbbf24" weight="duotone" />
+            )}
+            <Text style={styles.badgeText}>
+              {matchType === 'public' ? 'Public' : 'Private'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -123,9 +131,12 @@ export function ChallengePreview({
 
       {/* Info Note */}
       <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          💡 Winner takes the pot minus rake fee. Both players' stakes are at risk.
-        </Text>
+        <View style={styles.infoContent}>
+          <LightbulbIcon size={14} color="#93c5fd" weight="duotone" style={styles.infoIcon} />
+          <Text style={styles.infoText}>
+            Winner takes the pot minus rake fee. Both players' stakes are at risk.
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -159,6 +170,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   badgePublic: {
     backgroundColor: 'rgba(34, 197, 94, 0.15)',
@@ -231,10 +247,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(59, 130, 246, 0.2)',
   },
+  infoContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  infoIcon: {
+    marginTop: 2,
+  },
   infoText: {
     color: '#93c5fd',
     fontSize: 13,
     lineHeight: 18,
+    flex: 1,
   },
 });
 

@@ -52,6 +52,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ---- Guard: no CSS units in React Native styles ----
+      - name: Check for invalid CSS units (em/rem)
+        run: |
+          if grep -rPn --include='*.ts' --include='*.tsx' --include='*.js' \
+            "['\"-]\d+(\.\d+)?(em|rem)\b" \
+            apps/mobile/tailwind.config.js apps/mobile/src/; then
+            echo "::error::Found CSS unit (em/rem) in React Native code. Use plain numbers instead."
+            exit 1
+          fi
+
       - name: Lint
         run: pnpm --filter @pointlock/mobile lint
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { CrosshairIcon } from 'phosphor-react-native';
 import { LUXURY_THEME } from '../constants/theme';
 
 /**
@@ -20,7 +21,7 @@ export function SplashScreen() {
       {/* Logo Placeholder - Replace with actual logo component when available */}
       <View className="mb-8">
         <View className="w-24 h-24 rounded-2xl bg-primary/20 items-center justify-center mb-4">
-          <Text className="text-5xl">🎯</Text>
+          <CrosshairIcon size={64} color={LUXURY_THEME.gold.main} weight="duotone" />
         </View>
 
         {/* App Name */}

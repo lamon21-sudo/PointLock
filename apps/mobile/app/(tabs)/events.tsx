@@ -1,4 +1,5 @@
 import { View, Text, SectionList, RefreshControl, StyleSheet, Pressable } from 'react-native';
+import { CalendarIcon } from 'phosphor-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../src/services/api';
@@ -147,7 +148,7 @@ export default function EventsScreen() {
       <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
         <LeagueFilterBar selected={filter} onSelect={setFilter} />
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-6xl mb-4">📅</Text>
+          <CalendarIcon size={64} color={LUXURY_THEME.gold.main} weight="duotone" style={{ marginBottom: 16 }} />
           <Text className="text-text-primary font-bold text-xl mb-2">No Events Available</Text>
           <Text className="text-text-secondary text-center text-base">
             {filter !== 'ALL'

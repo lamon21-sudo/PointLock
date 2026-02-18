@@ -5,6 +5,31 @@ module.exports = {
     './src/**/*.{js,jsx,ts,tsx}',
   ],
   theme: {
+    // Top-level overrides: fully replace Tailwind defaults with RN-safe numeric values
+    letterSpacing: {
+      tighter: -0.8,
+      tight: -0.4,
+      normal: 0,
+      wide: 0.8,
+      wider: 1.6,
+      widest: 2.4,
+    },
+    lineHeight: {
+      none: 1,
+      tight: 1.25,
+      snug: 1.375,
+      normal: 1.5,
+      relaxed: 1.625,
+      loose: 2,
+      3: '12px',
+      4: '16px',
+      5: '20px',
+      6: '24px',
+      7: '28px',
+      8: '32px',
+      9: '36px',
+      10: '40px',
+    },
     extend: {
       colors: {
         // Multi-tone Gold System
@@ -55,18 +80,9 @@ module.exports = {
         '3xl': '24px',
         'full': '9999px',     // For pills
       },
-      letterSpacing: {
-        'wide': '0.05em',
-        'wider': '0.1em',     // For uppercase sub-headers
-        'widest': '0.15em',
-      },
-      lineHeight: {
-        'relaxed': '1.625',
-        'loose': '2',
-      },
       fontSize: {
-        'hero': ['48px', { lineHeight: '56px', letterSpacing: '-0.02em' }],
-        'display': ['36px', { lineHeight: '44px', letterSpacing: '-0.01em' }],
+        'hero': ['48px', { lineHeight: '56px', letterSpacing: -0.96 }],
+        'display': ['36px', { lineHeight: '44px', letterSpacing: -0.36 }],
       },
       boxShadow: {
         'gold-glow': '0 0 20px rgba(212, 175, 55, 0.25)',
@@ -75,8 +91,8 @@ module.exports = {
         'floating': '0 -4px 16px rgba(0, 0, 0, 0.25)',
       },
       spacing: {
-        '18': '4.5rem',
-        '22': '5.5rem',
+        '18': 72,
+        '22': 88,
       },
     },
   },

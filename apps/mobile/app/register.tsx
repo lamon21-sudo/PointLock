@@ -13,6 +13,7 @@ import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+import { CheckIcon } from 'phosphor-react-native';
 import { Input } from '../src/components/ui/Input';
 import { PasswordInput } from '../src/components/ui/PasswordInput';
 import { Button } from '../src/components/ui/Button';
@@ -301,7 +302,7 @@ export default function RegisterScreen() {
                         `}
                       >
                         {value && (
-                          <Text className="text-white text-xs font-bold">✓</Text>
+                          <CheckIcon size={14} color="#ffffff" weight="bold" />
                         )}
                       </View>
                       <Text className="text-sm text-text-secondary flex-1">

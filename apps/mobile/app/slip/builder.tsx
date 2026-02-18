@@ -11,6 +11,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Stack } from 'expo-router';
 import axios from 'axios';
 
+import { WifiSlashIcon, CalendarIcon } from 'phosphor-react-native';
 import { api } from '../../src/services/api';
 import { SportsEvent } from '@pick-rivals/shared-types';
 import { LeagueFilterBar } from '../../src/components/events/LeagueFilterBar';
@@ -193,7 +194,7 @@ export default function SlipBuilderScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
           <LeagueFilterBar selected={filter} onSelect={setFilter} />
           <View style={styles.errorContainer}>
-            <Text style={styles.errorEmoji}>📡</Text>
+            <WifiSlashIcon size={48} color="#ef4444" weight="duotone" style={{ marginBottom: 16 }} />
             <Text style={styles.errorTitle}>Connection Error</Text>
             <Text style={styles.errorMessage}>
               {isNetworkError
@@ -221,7 +222,7 @@ export default function SlipBuilderScreen() {
         <SafeAreaView style={styles.container} edges={['bottom']}>
           <LeagueFilterBar selected={filter} onSelect={setFilter} />
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>📅</Text>
+            <CalendarIcon size={48} color="#9ca3af" weight="duotone" style={{ marginBottom: 16 }} />
             <Text style={styles.emptyTitle}>No Games Available</Text>
             <Text style={styles.emptyMessage}>
               {filter !== 'ALL'
@@ -322,10 +323,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  errorEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   errorTitle: {
     color: '#ef4444',
     fontSize: 20,
@@ -343,10 +340,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   emptyTitle: {
     color: '#ffffff',

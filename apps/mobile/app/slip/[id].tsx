@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { MagnifyingGlassIcon, WarningIcon } from 'phosphor-react-native';
 import { useSlipDetail } from '../../src/hooks/useSlips';
 import { SlipStatusBadge } from '../../src/components/slip/SlipStatusBadge';
 import { PointsDisplay } from '../../src/components/slip/PointsDisplay';
@@ -75,7 +76,11 @@ function ErrorState({
 
   return (
     <View style={styles.centerContainer}>
-      <Text style={styles.errorIcon}>{isNotFound ? '🔍' : '⚠️'}</Text>
+      {isNotFound ? (
+        <MagnifyingGlassIcon size={48} color="#9ca3af" weight="duotone" style={{ marginBottom: 16 }} />
+      ) : (
+        <WarningIcon size={48} color="#f59e0b" weight="duotone" style={{ marginBottom: 16 }} />
+      )}
       <Text style={styles.errorTitle}>
         {isNotFound ? 'Slip Not Found' : 'Error Loading Slip'}
       </Text>
@@ -287,10 +292,6 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 15,
     marginTop: 16,
-  },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   errorTitle: {
     color: '#ffffff',

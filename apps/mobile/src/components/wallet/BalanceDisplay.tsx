@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { WalletIcon } from 'phosphor-react-native';
 import { formatRC } from '../../types/wallet.types';
 import { LUXURY_THEME } from '../../constants/theme';
 
@@ -64,7 +65,7 @@ export const BalanceDisplay = memo(function BalanceDisplay({
           <View style={styles.compactSkeleton} />
         ) : (
           <>
-            <Text style={styles.compactIcon}>💰</Text>
+            <WalletIcon size={14} color={LUXURY_THEME.gold.main} weight="duotone" style={{ marginRight: 6 }} />
             <Text style={styles.compactBalance}>{formatRC(totalBalance)}</Text>
           </>
         )}
@@ -158,10 +159,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
-  },
-  compactIcon: {
-    fontSize: 14,
-    marginRight: 6,
   },
   compactBalance: {
     fontSize: 14,

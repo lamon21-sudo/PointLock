@@ -31,7 +31,7 @@ export interface SlipFilterConfig {
   label: string;
   apiStatuses: SlipStatus[];
   emptyMessage: string;
-  emptyIcon: string;
+  emptyIconName: 'NotePencil' | 'Hourglass' | 'ChartBar';
 }
 
 /**
@@ -42,19 +42,19 @@ export const SLIP_FILTER_CONFIG: Record<SlipFilterType, SlipFilterConfig> = {
     label: 'Draft',
     apiStatuses: ['DRAFT'],
     emptyMessage: 'No draft slips. Start building your picks!',
-    emptyIcon: '📝',
+    emptyIconName: 'NotePencil',
   },
   active: {
     label: 'Active',
     apiStatuses: ['PENDING', 'ACTIVE'],
     emptyMessage: 'No active slips. Submit a slip to track it here.',
-    emptyIcon: '⏳',
+    emptyIconName: 'Hourglass',
   },
   completed: {
     label: 'Completed',
     apiStatuses: ['WON', 'LOST', 'VOID'],
     emptyMessage: 'No completed slips yet. Your history will appear here.',
-    emptyIcon: '📊',
+    emptyIconName: 'ChartBar',
   },
 };
 

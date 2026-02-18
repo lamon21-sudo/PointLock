@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { UsersThreeIcon, EnvelopeSimpleIcon, WarningIcon } from 'phosphor-react-native';
 
 import { useFriends } from '../../src/hooks/useFriends';
 import { useAuthStore } from '../../src/stores/auth.store';
@@ -85,7 +86,9 @@ function FriendTabs({
 function EmptyFriends(): React.ReactElement {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>{'\u{1F465}'}</Text>
+      <View style={styles.iconWrapper}>
+        <UsersThreeIcon size={48} color={LUXURY_THEME.text.muted} weight="duotone" />
+      </View>
       <Text style={styles.emptyTitle}>No Friends Yet</Text>
       <Text style={styles.emptyMessage}>
         Challenge your friends to matches and climb the leaderboard together!
@@ -97,7 +100,9 @@ function EmptyFriends(): React.ReactElement {
 function EmptyRequests(): React.ReactElement {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>{'\u{1F4E8}'}</Text>
+      <View style={styles.iconWrapper}>
+        <EnvelopeSimpleIcon size={48} color={LUXURY_THEME.text.muted} weight="duotone" />
+      </View>
       <Text style={styles.emptyTitle}>No Friend Requests</Text>
       <Text style={styles.emptyMessage}>
         When someone sends you a friend request, it will appear here.
@@ -115,7 +120,9 @@ function ErrorState({
 }): React.ReactElement {
   return (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorIcon}>{'\u26A0\uFE0F'}</Text>
+      <View style={styles.iconWrapper}>
+        <WarningIcon size={48} color={LUXURY_THEME.status.warning} weight="duotone" />
+      </View>
       <Text style={styles.errorTitle}>Failed to Load</Text>
       <Text style={styles.errorMessage}>{error}</Text>
       <Pressable style={styles.retryButton} onPress={onRetry}>
@@ -454,8 +461,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 60,
   },
-  emptyIcon: {
-    fontSize: 64,
+  // Icon spacing wrapper — replaces emoji marginBottom
+  iconWrapper: {
     marginBottom: 16,
   },
   emptyTitle: {
@@ -476,10 +483,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-  },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   errorTitle: {
     fontSize: 20,

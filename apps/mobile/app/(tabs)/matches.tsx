@@ -22,6 +22,7 @@ import { SlipListCard } from '../../src/components/slip/SlipListCard';
 import { ApiSlipResponse } from '../../src/services/slip.service';
 import { SLIP_FILTER_CONFIG, SlipFilterType } from '../../src/types/api-slip.types';
 import { LUXURY_THEME } from '../../src/constants/theme';
+import { AppIcon } from '../../src/components/ui/AppIcon';
 
 // =====================================================
 // Constants
@@ -47,7 +48,7 @@ function EmptyState({
 
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>{config.emptyIcon}</Text>
+      <AppIcon name={config.emptyIconName} size={48} color={LUXURY_THEME.text.muted} />
       <Text style={styles.emptyTitle}>
         {filter === 'draft'
           ? 'No Draft Slips'
@@ -80,7 +81,7 @@ function ErrorState({
 
   return (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorIcon}>{isNetworkError ? '📡' : '⚠️'}</Text>
+      <AppIcon name={isNetworkError ? 'WifiSlash' : 'Warning'} size={48} color={isNetworkError ? LUXURY_THEME.status.error : LUXURY_THEME.status.warning} />
       <Text style={styles.errorTitle}>
         {isNetworkError ? 'Connection Issue' : 'Something Went Wrong'}
       </Text>
@@ -296,10 +297,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 60,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   emptyTitle: {
     color: LUXURY_THEME.text.primary,
     fontSize: 20,
@@ -332,10 +329,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     paddingTop: 60,
-  },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   errorTitle: {
     color: LUXURY_THEME.text.primary,

@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CrosshairIcon } from 'phosphor-react-native';
 
 export default function WelcomeScreen() {
   return (
@@ -8,7 +9,7 @@ export default function WelcomeScreen() {
       <View className="flex-1 items-center justify-center px-6">
         {/* Logo Area */}
         <View className="mb-8">
-          <Text className="text-6xl mb-2">🏈</Text>
+          <CrosshairIcon size={64} color="#D4AF37" weight="duotone" />
         </View>
 
         {/* Title */}
@@ -23,7 +24,7 @@ export default function WelcomeScreen() {
         {/* Tagline */}
         <View className="bg-surface rounded-2xl p-6 mb-12 w-full">
           <Text className="text-primary text-center text-lg font-semibold mb-2">
-            🎯 Skill-Based PvP Predictions
+            Skill-Based PvP Predictions
           </Text>
           <Text className="text-gray-400 text-center">
             Don't beat the odds — beat your friends in head-to-head sports prediction battles.
@@ -33,7 +34,7 @@ export default function WelcomeScreen() {
         {/* API Status */}
         <View className="bg-surface-elevated rounded-xl p-4 mb-8 w-full">
           <Text className="text-white font-semibold mb-2">
-            ✅ Hello World — Mobile App Running!
+            Hello World — Mobile App Running!
           </Text>
           <Text className="text-gray-400 text-sm">
             React Native (Expo) + NativeWind configured successfully.

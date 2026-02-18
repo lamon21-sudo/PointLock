@@ -2,6 +2,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { UserCircleIcon, CaretRightIcon } from 'phosphor-react-native';
 import { useAuthStore } from '../../src/stores/auth.store';
 import { useWalletStore } from '../../src/stores/wallet.store';
 import { AuthService } from '../../src/services/auth.service';
@@ -78,7 +79,7 @@ export default function ProfileScreen() {
           <GlassCard padded style={styles.cardSpacing}>
             <View style={styles.guestHeaderContent}>
               <View style={styles.guestAvatarContainer}>
-                <Text style={styles.guestAvatarEmoji}>👤</Text>
+                <UserCircleIcon size={48} color={LUXURY_THEME.gold.main} weight="duotone" />
               </View>
               <Text style={styles.guestDisplayName}>Guest User</Text>
               <Text style={styles.guestUsername}>Not signed in</Text>
@@ -113,8 +114,8 @@ export default function ProfileScreen() {
 
           {/* Limited Settings for Guests */}
           <GlassCard style={styles.cardSpacing}>
-            <MenuRow icon="⚙️" label="Settings" onPress={() => {}} />
-            <MenuRow icon="❓" label="Help & Support" onPress={() => {}} isLast />
+            <MenuRow icon="GearSix" label="Settings" onPress={() => {}} />
+            <MenuRow icon="Question" label="Help & Support" onPress={() => {}} isLast />
           </GlassCard>
 
           {/* Bottom Spacer */}
@@ -196,7 +197,7 @@ export default function ProfileScreen() {
               ) : (
                 <Text style={styles.viewDetails}>View Details</Text>
               )}
-              <Text style={styles.chevron}>›</Text>
+              <CaretRightIcon size={18} color={LUXURY_THEME.text.muted} weight="bold" />
             </View>
           </View>
 
@@ -230,14 +231,14 @@ export default function ProfileScreen() {
 
         {/* Settings Menu */}
         <GlassCard style={styles.cardSpacing}>
-          <MenuRow icon="⚙️" label="Settings" onPress={() => {}} />
-          <MenuRow icon="🔔" label="Notifications" onPress={() => {}} />
+          <MenuRow icon="GearSix" label="Settings" onPress={() => {}} />
+          <MenuRow icon="Bell" label="Notifications" onPress={() => {}} />
           <MenuRow
-            icon="📜"
+            icon="Receipt"
             label="Transaction History"
             onPress={() => router.push('/(tabs)/wallet')}
           />
-          <MenuRow icon="❓" label="Help & Support" onPress={() => {}} isLast />
+          <MenuRow icon="Question" label="Help & Support" onPress={() => {}} isLast />
         </GlassCard>
 
         {/* Sign Out Button */}
@@ -248,7 +249,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <MenuRow
-              icon="🚪"
+              icon="SignOut"
               label="Sign Out"
               onPress={handleSignOut}
               showChevron={false}
@@ -331,9 +332,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  guestAvatarEmoji: {
-    fontSize: 48,
-  },
   guestDisplayName: {
     fontSize: 20,
     fontWeight: '700',
@@ -406,10 +404,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: LUXURY_THEME.text.secondary,
     marginRight: 4,
-  },
-  chevron: {
-    fontSize: 18,
-    color: LUXURY_THEME.text.muted,
   },
   walletRow: {
     flexDirection: 'row',

@@ -8,6 +8,8 @@ import { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
+import { ConfettiIcon, ReceiptIcon, XIcon } from 'phosphor-react-native';
+import { LUXURY_THEME } from '../../src/constants/theme';
 
 import {
   useSlipStore,
@@ -173,7 +175,9 @@ export default function SlipReviewScreen() {
         />
         <SafeAreaView testID={TEST_IDS.slipReview.screen} style={styles.container} edges={['bottom']}>
           <View testID={TEST_IDS.slipReview.successState} style={styles.successContainer}>
-            <Text style={styles.successEmoji}>🎉</Text>
+            <View style={styles.iconWrapper}>
+              <ConfettiIcon size={48} color={LUXURY_THEME.gold.main} weight="duotone" />
+            </View>
             <Text style={styles.successTitle}>Slip Locked!</Text>
             <Text style={styles.successMessage}>
               Your picks are locked and ready for a challenge.
@@ -210,7 +214,9 @@ export default function SlipReviewScreen() {
         />
         <SafeAreaView testID={TEST_IDS.slipReview.screen} style={styles.container} edges={['bottom']}>
           <View testID={TEST_IDS.slipReview.emptyState} style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>📋</Text>
+            <View style={styles.iconWrapper}>
+              <ReceiptIcon size={48} color={LUXURY_THEME.text.muted} weight="duotone" />
+            </View>
             <Text style={styles.emptyTitle}>Your Slip is Empty</Text>
             <Text style={styles.emptyMessage}>
               Add picks from the events to get started
@@ -273,7 +279,7 @@ export default function SlipReviewScreen() {
           <View testID={TEST_IDS.slipReview.errorBanner} style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{submitError}</Text>
             <Pressable onPress={() => setSubmissionError('')} hitSlop={8}>
-              <Text style={styles.errorDismiss}>✕</Text>
+              <XIcon size={18} color={LUXURY_THEME.text.muted} weight="bold" />
             </Pressable>
           </View>
         )}
@@ -351,8 +357,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  emptyEmoji: {
-    fontSize: 48,
+  // Icon spacing wrapper — replaces emoji marginBottom
+  iconWrapper: {
     marginBottom: 16,
   },
   emptyTitle: {
@@ -385,10 +391,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-  },
-  successEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
   },
   successTitle: {
     color: '#22c55e',
@@ -486,12 +488,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     flex: 1,
-  },
-  errorDismiss: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-    paddingLeft: 12,
   },
   // Summary Footer
   summaryContainer: {

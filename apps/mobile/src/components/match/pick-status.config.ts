@@ -10,6 +10,7 @@
 // - High contrast for readability
 
 import type { PickStatus } from '@pick-rivals/shared-types';
+import type { IconName } from '../ui/AppIcon';
 
 // =====================================================
 // Types
@@ -22,8 +23,8 @@ export interface PickStatusConfig {
   color: string;
   /** Background color (15% opacity) */
   backgroundColor: string;
-  /** Unicode icon for status */
-  icon: string;
+  /** Phosphor icon name for status */
+  iconName: IconName;
 }
 
 // =====================================================
@@ -35,31 +36,31 @@ export const PICK_STATUS_CONFIG: Record<PickStatus, PickStatusConfig> = {
     label: 'Pending',
     color: '#6b7280',
     backgroundColor: 'rgba(107, 114, 128, 0.15)',
-    icon: '\u23F3', // Hourglass ⏳
+    iconName: 'Hourglass',
   },
   HIT: {
     label: 'Won',
     color: '#22c55e',
     backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    icon: '\u2713', // Checkmark ✓
+    iconName: 'CheckCircle',
   },
   MISS: {
     label: 'Lost',
     color: '#ef4444',
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    icon: '\u2717', // X mark ✗
+    iconName: 'XCircle',
   },
   PUSH: {
     label: 'Push',
     color: '#eab308',
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
-    icon: '=',
+    iconName: 'Equals',
   },
   VOID: {
     label: 'Void',
     color: '#6b7280',
     backgroundColor: 'rgba(107, 114, 128, 0.1)',
-    icon: '\u2014', // Em dash —
+    iconName: 'Prohibit',
   },
 };
 

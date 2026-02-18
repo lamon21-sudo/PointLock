@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TrophyIcon, GameControllerIcon } from 'phosphor-react-native';
 import { useAuthStore } from '../../src/stores/auth.store';
 import { useRanked } from '../../src/hooks/useRanked';
 import {
@@ -74,7 +75,9 @@ function RankedScreenSkeleton() {
 function NoSeasonState() {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🏆</Text>
+      <View style={styles.iconWrapper}>
+        <TrophyIcon size={64} color={LUXURY_THEME.gold.main} weight="duotone" />
+      </View>
       <Text style={styles.emptyTitle}>No Active Season</Text>
       <Text style={styles.emptyText}>
         Check back soon for the next ranked season!
@@ -117,7 +120,9 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
 function GuestState() {
   return (
     <View style={styles.guestContainer}>
-      <Text style={styles.guestIcon}>🎮</Text>
+      <View style={styles.iconWrapper}>
+        <GameControllerIcon size={64} color={LUXURY_THEME.gold.main} weight="duotone" />
+      </View>
       <Text style={styles.guestTitle}>Sign in to compete</Text>
       <Text style={styles.guestText}>
         Log in or create an account to participate in ranked seasons.
@@ -466,8 +471,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
   },
-  emptyIcon: {
-    fontSize: 64,
+  // Icon spacing wrapper — replaces emoji marginBottom
+  iconWrapper: {
     marginBottom: 16,
   },
   emptyTitle: {
@@ -512,10 +517,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-  },
-  guestIcon: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   guestTitle: {
     fontSize: 20,

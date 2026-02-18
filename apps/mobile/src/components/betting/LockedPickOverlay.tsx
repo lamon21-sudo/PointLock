@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { LockIcon } from 'phosphor-react-native';
 import { TIER_NAMES } from '@pick-rivals/shared-types';
 import { LUXURY_THEME } from '../../constants/theme';
 
@@ -32,7 +33,7 @@ export function LockedPickOverlay({ requiredTier, onPress }: LockedPickOverlayPr
     <View style={styles.container} pointerEvents={onPress ? 'auto' : 'none'}>
       {/* Lock icon */}
       <View style={styles.iconContainer}>
-        <Text style={styles.lockIcon}>🔒</Text>
+        <LockIcon size={20} color={LUXURY_THEME.gold.main} weight="duotone" />
       </View>
 
       {/* Tier requirement text */}
@@ -71,10 +72,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 4,
-  },
-  lockIcon: {
-    fontSize: 20,
-    opacity: 0.9,
   },
   tierText: {
     color: LUXURY_THEME.text.secondary,

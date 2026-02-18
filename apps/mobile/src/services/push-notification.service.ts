@@ -15,6 +15,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import api from './api';
+import { TokenRefreshService } from './token-refresh.service';
 
 // =====================================================
 // Configuration
@@ -110,6 +111,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
  */
 async function registerTokenWithBackend(token: string): Promise<void> {
   try {
+    // Proactively ensure access token is valid before making the request.
+    // This prevents a 401 → refresh → retry cascade and the noisy
+    // "Failed to register token" error when the token is simply stale.
+    await TokenRefreshService.ensureValidToken();
+
     await api.post('/auth/push-token', { token });
 
     if (__DEV__) {

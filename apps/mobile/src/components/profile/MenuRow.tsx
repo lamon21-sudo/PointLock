@@ -6,6 +6,9 @@
 
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { CaretRightIcon } from 'phosphor-react-native';
+import { AppIcon } from '../ui/AppIcon';
+import type { IconName } from '../ui/AppIcon';
 import { LUXURY_THEME } from '../../constants/theme';
 
 // =====================================================
@@ -13,8 +16,8 @@ import { LUXURY_THEME } from '../../constants/theme';
 // =====================================================
 
 export interface MenuRowProps {
-  /** Emoji icon to display */
-  icon: string;
+  /** Phosphor icon name to display */
+  icon: IconName;
   /** Primary label text */
   label: string;
   /** Optional subtitle/hint text */
@@ -65,7 +68,7 @@ export const MenuRow = memo(function MenuRow({
     >
       {/* Icon Container */}
       <View style={styles.iconContainer}>
-        <Text style={styles.icon}>{icon}</Text>
+        <AppIcon name={icon} size={20} color={LUXURY_THEME.gold.main} />
       </View>
 
       {/* Label Section */}
@@ -94,7 +97,7 @@ export const MenuRow = memo(function MenuRow({
           </Text>
         )}
         {showChevron && (
-          <Text style={styles.chevron}>›</Text>
+          <CaretRightIcon size={18} color={LUXURY_THEME.text.muted} weight="bold" />
         )}
       </View>
     </Pressable>
@@ -133,9 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  icon: {
-    fontSize: 20,
-  },
   labelContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -162,11 +162,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: LUXURY_THEME.text.secondary,
     marginRight: 4,
-  },
-  chevron: {
-    fontSize: 20,
-    color: LUXURY_THEME.text.muted,
-    marginLeft: 4,
   },
 });
 

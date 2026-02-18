@@ -9,6 +9,8 @@ import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Match, MatchType } from '@pick-rivals/shared-types';
+import { WarningIcon, XIcon } from 'phosphor-react-native';
+import { LUXURY_THEME } from '../../src/constants/theme';
 
 import { useWallet } from '../../src/hooks/useWallet';
 import {
@@ -138,7 +140,9 @@ export default function ChallengeCreateScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>⚠️</Text>
+          <View style={styles.iconWrapper}>
+            <WarningIcon size={64} color={LUXURY_THEME.status.warning} weight="duotone" />
+          </View>
           <Text style={styles.errorTitle}>No Slip Selected</Text>
           <Text style={styles.errorMessage}>
             Please create and lock a slip first.
@@ -198,7 +202,7 @@ export default function ChallengeCreateScreen() {
         <View testID={TEST_IDS.challengeCreate.errorBanner} style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{submitError}</Text>
           <Pressable onPress={() => setSubmitError(null)} hitSlop={8}>
-            <Text style={styles.errorDismiss}>✕</Text>
+            <XIcon size={18} color={LUXURY_THEME.text.muted} weight="bold" />
           </Pressable>
         </View>
       )}
@@ -307,8 +311,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  errorEmoji: {
-    fontSize: 64,
+  // Icon spacing wrapper — replaces emoji marginBottom
+  iconWrapper: {
     marginBottom: 20,
   },
   errorTitle: {
@@ -357,12 +361,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     lineHeight: 20,
-  },
-  errorDismiss: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-    paddingLeft: 12,
   },
 
   // Footer

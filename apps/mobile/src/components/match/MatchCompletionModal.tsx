@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
+import AppIcon from '../ui/AppIcon';
 
 // =====================================================
 // Types
@@ -92,7 +93,7 @@ const RESULT_CONFIG: Record<
   {
     title: string;
     subtitle: string;
-    emoji: string;
+    iconName: string;
     backgroundColor: string;
     accentColor: string;
   }
@@ -100,21 +101,21 @@ const RESULT_CONFIG: Record<
   win: {
     title: 'Victory!',
     subtitle: 'You won the match!',
-    emoji: '\uD83C\uDFC6', // Trophy
+    iconName: 'Trophy',
     backgroundColor: 'rgba(34, 197, 94, 0.15)',
     accentColor: '#22c55e',
   },
   loss: {
     title: 'Defeat',
     subtitle: 'Better luck next time',
-    emoji: '\uD83D\uDE14', // Pensive face
+    iconName: 'SmileyMeh',
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     accentColor: '#ef4444',
   },
   draw: {
     title: "It's a Draw!",
     subtitle: 'Stakes have been returned',
-    emoji: '\uD83E\uDD1D', // Handshake
+    iconName: 'Handshake',
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
     accentColor: '#eab308',
   },
@@ -233,7 +234,9 @@ export function MatchCompletionModal({
               },
             ]}
           >
-            <Text style={styles.emoji}>{config.emoji}</Text>
+            <View style={styles.iconWrapper}>
+              <AppIcon name={config.iconName as any} size={48} color={config.accentColor} />
+            </View>
             <Text style={[styles.title, { color: config.accentColor }]}>
               {config.title}
             </Text>
@@ -432,8 +435,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 24,
   },
-  emoji: {
-    fontSize: 48,
+  iconWrapper: {
     marginBottom: 12,
   },
   title: {

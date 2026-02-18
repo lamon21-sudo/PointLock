@@ -13,6 +13,7 @@
 
 import { api } from './api';
 import { useAuthStore } from '../stores/auth.store';
+import { isTokenExpired } from '../utils/jwt';
 
 // =====================================================
 // Type Definitions
@@ -94,6 +95,36 @@ export class TokenRefreshService {
       isRefreshing = false;
       refreshPromise = null;
     }
+  }
+
+  /**
+   * Ensure the current access token is valid (not expired or near-expiry).
+   * If the token is stale, proactively refreshes before returning.
+   *
+   * Use this before socket connections and push registration to avoid
+   * reactive TOKEN_EXPIRED / 401 error cascades.
+   *
+   * @param bufferSeconds - Seconds before actual expiry to trigger refresh (default 60)
+   * @returns Promise resolving to a valid access token
+   * @throws Error if no token exists and refresh fails
+   */
+  static async ensureValidToken(bufferSeconds = 60): Promise<string> {
+    const authState = useAuthStore.getState();
+
+    // Guard: Don't attempt refresh during logout or when not authenticated
+    if (authState.isLoggingOut || !authState.isAuthenticated) {
+      throw new Error('Not authenticated or logging out');
+    }
+
+    const { accessToken } = authState;
+
+    if (accessToken && !isTokenExpired(accessToken, bufferSeconds)) {
+      return accessToken;
+    }
+
+    // Token is missing, expired, or near-expiry — refresh proactively
+    console.log('[TokenRefresh] Access token stale or missing, refreshing proactively...');
+    return this.refresh();
   }
 
   /**
@@ -204,8 +235,9 @@ export class TokenRefreshService {
    * Clears all auth state and persisted tokens.
    */
   private static async forceLogout(): Promise<void> {
-    // Mutex: Prevent concurrent forceLogout operations
-    if (isForceLoggingOut) {
+    // Mutex: Prevent concurrent forceLogout operations and
+    // skip if user-initiated logout is already in progress
+    if (isForceLoggingOut || useAuthStore.getState().isLoggingOut) {
       return;
     }
 
@@ -214,15 +246,16 @@ export class TokenRefreshService {
     try {
       console.log('[TokenRefresh] Token refresh failed - forcing logout');
 
+      // Clear refresh state so no new callers join a dead queue
+      isRefreshing = false;
+      refreshPromise = null;
+
       // Clear auth state (Zustand store + SecureStore)
       await useAuthStore.getState().logout();
 
       console.log('[TokenRefresh] User logged out due to failed token refresh');
     } catch (error) {
       console.warn('[TokenRefresh] Error during force logout:', error);
-      // Still ensure we're in a clean state
-      isRefreshing = false;
-      queuedRequests = [];
     } finally {
       isForceLoggingOut = false;
     }

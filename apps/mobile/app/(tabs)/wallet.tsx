@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { GiftIcon, WalletIcon, WarningIcon, ReceiptIcon } from 'phosphor-react-native';
 
 import { useWalletStore } from '../../src/stores/wallet.store';
 import { useAuthStore } from '../../src/stores/auth.store';
@@ -42,7 +43,9 @@ const FILTER_OPTIONS: { label: string; value: TransactionType | null }[] = [
 function EmptyTransactions({ isFiltered }: { isFiltered: boolean }) {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📋</Text>
+      <View style={styles.iconWrapper}>
+        <ReceiptIcon size={48} color={LUXURY_THEME.text.muted} weight="duotone" />
+      </View>
       <Text style={styles.emptyTitle}>
         {isFiltered ? 'No matching transactions' : 'No transactions yet'}
       </Text>
@@ -101,7 +104,7 @@ function AllowanceBanner({
       ]}
     >
       <View style={styles.allowanceContent}>
-        <Text style={styles.allowanceIcon}>🎁</Text>
+        <GiftIcon size={24} color={LUXURY_THEME.bg.primary} weight="duotone" />
         <View>
           <Text style={styles.allowanceTitle}>Weekly Allowance Available!</Text>
           <Text style={styles.allowanceSubtitle}>
@@ -281,7 +284,9 @@ export default function WalletScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.guestContainer}>
-          <Text style={styles.guestIcon}>💰</Text>
+          <View style={styles.iconWrapper}>
+            <WalletIcon size={64} color={LUXURY_THEME.gold.main} weight="duotone" />
+          </View>
           <Text style={styles.guestTitle}>Sign in to view your wallet</Text>
           <Text style={styles.guestSubtitle}>
             Track your balance, view transactions, and manage your funds.
@@ -302,7 +307,9 @@ export default function WalletScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <View style={styles.iconWrapper}>
+            <WarningIcon size={48} color={LUXURY_THEME.status.warning} weight="duotone" />
+          </View>
           <Text style={styles.errorTitle}>Unable to load wallet</Text>
           <Text style={styles.errorSubtitle}>{walletError}</Text>
           <Pressable onPress={fetchWallet} style={styles.retryButton}>
@@ -366,6 +373,11 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
+  // Icon spacing wrapper — replaces emoji marginBottom
+  iconWrapper: {
+    marginBottom: 16,
+  },
+
   // Section Header
   sectionHeader: {
     paddingHorizontal: 16,
@@ -424,10 +436,7 @@ const styles = StyleSheet.create({
   allowanceContent: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  allowanceIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    gap: 12,
   },
   allowanceTitle: {
     fontSize: 15,
@@ -455,11 +464,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 48,
     paddingHorizontal: 32,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-    opacity: 0.5,
   },
   emptyTitle: {
     fontSize: 17,
@@ -529,10 +533,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
   },
-  guestIcon: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
   guestTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -567,10 +567,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
-  },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   errorTitle: {
     fontSize: 18,

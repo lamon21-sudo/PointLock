@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState, LogBox } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { SplashScreen } from '../src/components/SplashScreen';
 import { parseInviteUrl } from '../src/utils/deep-link-handler';
 import { LUXURY_THEME } from '../src/constants/theme';
 import SocketService from '../src/services/socket.service';
+import { TokenRefreshService } from '../src/services/token-refresh.service';
 import { ToastProvider } from '../src/contexts/ToastContext';
 import { ToastContainer } from '../src/components/ui/ToastContainer';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
@@ -117,6 +118,38 @@ function RootLayoutNav() {
     });
 
     return cleanup;
+  }, [isInitialized, isAuthenticated]);
+
+  // Proactively refresh token when app returns to foreground
+  // Prevents stale-token cascades in socket and push services
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated) return;
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        // Guard: skip if user is logging out (check live store state)
+        const authState = useAuthStore.getState();
+        if (!authState.isAuthenticated || authState.isLoggingOut) {
+          appState.current = nextState;
+          return;
+        }
+
+        // App just came to foreground — ensure token is still valid
+        TokenRefreshService.ensureValidToken().catch(() => {
+          // ensureValidToken triggers forceLogout internally on failure
+        });
+
+        // Reconnect socket if it was disconnected while backgrounded
+        const socketService = SocketService.getInstance();
+        if (!socketService.isConnected()) {
+          socketService.connect().catch(() => {});
+        }
+      }
+      appState.current = nextState;
+    });
+
+    return () => subscription.remove();
   }, [isInitialized, isAuthenticated]);
 
   // Handle auth-based navigation once initialized

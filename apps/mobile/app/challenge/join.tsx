@@ -24,6 +24,7 @@ import { createAndLockSlip } from '../../src/services/slip.service';
 import { useWallet } from '../../src/hooks/useWallet';
 import { mapDraftPicksToPayload } from '../../src/utils/slip-mapper';
 import { DraftPick, SLIP_MAX_PICKS } from '../../src/types/slip.types';
+import { WarningIcon, XCircleIcon, XIcon } from 'phosphor-react-native';
 import { PickItem } from '../../src/components/slip/PickItem';
 import { BettingEventCard } from '../../src/components/betting/BettingEventCard';
 import { useEvents } from '../../src/hooks/useEvents';
@@ -179,7 +180,7 @@ export default function ChallengeJoinScreen() {
         <Stack.Screen options={{ title: 'Invalid Invite' }} />
         <SafeAreaView style={styles.container} edges={['bottom']}>
           <View style={styles.errorContainer}>
-            <Text style={styles.errorEmoji}>⚠️</Text>
+            <WarningIcon size={64} color="#f59e0b" weight="duotone" style={{ marginBottom: 20 }} />
             <Text style={styles.errorTitle}>Invalid Invite Link</Text>
             <Text style={styles.errorMessage}>
               This invite link is not valid. Please check the link and try again.
@@ -215,7 +216,7 @@ export default function ChallengeJoinScreen() {
         <Stack.Screen options={{ title: 'Challenge Error' }} />
         <SafeAreaView style={styles.container} edges={['bottom']}>
           <View style={styles.errorContainer}>
-            <Text style={styles.errorEmoji}>❌</Text>
+            <XCircleIcon size={64} color="#ef4444" weight="duotone" style={{ marginBottom: 20 }} />
             <Text style={styles.errorTitle}>
               {matchError?.includes('expired')
                 ? 'Invite Expired'
@@ -361,7 +362,7 @@ export default function ChallengeJoinScreen() {
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{submitError}</Text>
             <Pressable onPress={() => setSubmitError(null)} hitSlop={8}>
-              <Text style={styles.errorDismiss}>✕</Text>
+              <XIcon size={18} color="#ffffff" weight="bold" />
             </Pressable>
           </View>
         )}
@@ -445,10 +446,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
   },
   errorTitle: {
     color: '#ef4444',
@@ -622,9 +619,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorDismiss: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
     paddingLeft: 12,
   },
 

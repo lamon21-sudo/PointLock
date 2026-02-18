@@ -14,6 +14,7 @@
 import React, { memo, useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { getPickStatusConfig } from './pick-status.config';
+import { AppIcon } from '../ui/AppIcon';
 import { formatOdds, formatSpread } from '@pick-rivals/shared-types';
 import type { CombinedPick } from '../../utils/pick-feed';
 import type { EventScore } from '../../hooks/useMatchSocket';
@@ -159,7 +160,7 @@ function PickFeedItemComponent({
     >
       {/* Status Badge */}
       <View style={[styles.statusBadge, { backgroundColor: statusConfig.backgroundColor }]}>
-        <Text style={[styles.statusIcon, { color: statusConfig.color }]}>{statusConfig.icon}</Text>
+        <AppIcon name={statusConfig.iconName} size={16} color={statusConfig.color} />
       </View>
 
       {/* Pick Info */}
@@ -230,11 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusIcon: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
   // Pick Info
   pickInfo: {
     flex: 1,

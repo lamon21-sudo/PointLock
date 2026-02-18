@@ -173,7 +173,7 @@ export function SlipBuilderExample(): React.ReactElement {
               disabled={isInSlip}
             >
               <Text style={styles.addButtonText}>
-                {isInSlip ? '✓ ' : '+ '}
+                {isInSlip ? 'Added ' : '+ '}
                 {mockPick.eventInfo.awayTeamAbbr} @ {mockPick.eventInfo.homeTeamAbbr}
                 {' • '}
                 {mockPick.pickType} ({mockPick.selection})
@@ -219,7 +219,7 @@ export function SlipBuilderExample(): React.ReactElement {
                 onPress={() => removePick(pick.id)}
                 hitSlop={8}
               >
-                <Text style={styles.removeButtonText}>✕</Text>
+                <Text style={styles.removeButtonText}>Remove</Text>
               </Pressable>
             </View>
           ))

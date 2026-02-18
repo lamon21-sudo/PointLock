@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { PencilSimpleIcon } from 'phosphor-react-native';
 import {
   getAvatarEmoji,
   formatSkillRating,
@@ -74,7 +75,7 @@ export function ProfileHeader({
               ]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={styles.editIcon}>✏️</Text>
+              <PencilSimpleIcon size={14} color={LUXURY_THEME.gold.main} weight="duotone" />
             </Pressable>
           )}
         </View>
@@ -145,9 +146,6 @@ const styles = StyleSheet.create({
   },
   editButtonPressed: {
     backgroundColor: 'rgba(214, 179, 106, 0.25)',
-  },
-  editIcon: {
-    fontSize: 14,
   },
   username: {
     fontSize: 14,

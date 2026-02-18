@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { ConfettiIcon, CheckIcon } from 'phosphor-react-native';
 import type { Match } from '@pick-rivals/shared-types';
+import { LUXURY_THEME } from '../../constants/theme';
 
 import { DraftPick } from '../../types/slip.types';
 import { PickItem } from '../slip/PickItem';
@@ -132,7 +134,9 @@ export function InviteShareModal({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>🎉</Text>
+            <View style={styles.headerIcon}>
+              <ConfettiIcon size={48} color={LUXURY_THEME.gold.main} weight="duotone" />
+            </View>
             <Text style={styles.title}>Challenge Created!</Text>
             <Text style={styles.subtitle}>
               {hasInviteCode
@@ -175,9 +179,14 @@ export function InviteShareModal({
                   <Text style={styles.inviteCodeValue}>{match.inviteCode}</Text>
                 </View>
                 <View style={styles.copyButton}>
-                  <Text style={styles.copyButtonText}>
-                    {copySuccess ? '✓ Copied' : 'Copy'}
-                  </Text>
+                  {copySuccess ? (
+                    <View style={styles.copiedContent}>
+                      <CheckIcon size={14} color="#22c55e" weight="bold" />
+                      <Text style={[styles.copyButtonText, styles.copiedText]}>Copied</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.copyButtonText}>Copy</Text>
+                  )}
                 </View>
               </Pressable>
             </View>
@@ -250,8 +259,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
   },
-  emoji: {
-    fontSize: 48,
+  headerIcon: {
     marginBottom: 8,
   },
   title: {
@@ -347,6 +355,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  copiedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  copiedText: {
+    color: '#22c55e',
   },
 
   // Action Buttons

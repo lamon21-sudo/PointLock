@@ -6,6 +6,7 @@ import {
   getTransactionCategory,
   formatRC,
 } from '../../types/wallet.types';
+import AppIcon, { IconName } from '../ui/AppIcon';
 
 // =====================================================
 // Transaction Item Component
@@ -19,31 +20,31 @@ interface TransactionItemProps {
 }
 
 /**
- * Get the emoji icon for a transaction type.
+ * Get the Phosphor icon name for a transaction type.
  * Icons are chosen to be instantly recognizable at a glance.
  */
-function getTransactionIcon(type: TransactionType): string {
+function getTransactionIcon(type: TransactionType): IconName {
   switch (type) {
     case 'DEPOSIT':
-      return '💳';
+      return 'CreditCard';
     case 'WITHDRAWAL':
-      return '🏦';
+      return 'Bank';
     case 'MATCH_ENTRY':
-      return '🎯';
+      return 'Crosshair';
     case 'MATCH_WIN':
-      return '🏆';
+      return 'Trophy';
     case 'MATCH_REFUND':
-      return '↩️';
+      return 'ArrowULeftDown';
     case 'RAKE_FEE':
-      return '📊';
+      return 'ChartBar';
     case 'BONUS':
-      return '🎁';
+      return 'Gift';
     case 'WEEKLY_ALLOWANCE':
-      return '📅';
+      return 'CalendarCheck';
     case 'ADMIN_ADJUSTMENT':
-      return '⚙️';
+      return 'GearSix';
     default:
-      return '💰';
+      return 'Wallet';
   }
 }
 
@@ -176,7 +177,7 @@ export const TransactionItem = memo(function TransactionItem({
     >
       {/* Icon Container */}
       <View style={[styles.iconContainer, { backgroundColor: getIconBackground() }]}>
-        <Text style={styles.icon}>{getTransactionIcon(type)}</Text>
+        <AppIcon name={getTransactionIcon(type)} size={20} color="#ffffff" />
       </View>
 
       {/* Transaction Details */}
@@ -229,9 +230,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  icon: {
-    fontSize: 20,
   },
   detailsContainer: {
     flex: 1,

@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { XIcon } from 'phosphor-react-native';
 import { DraftPick } from '../../types/slip.types';
 import { formatOdds, formatSpread, formatPropType } from '@pick-rivals/shared-types';
 import { LUXURY_THEME } from '../../constants/theme';
@@ -200,7 +201,7 @@ export function PickItem({
           accessibilityRole="button"
           accessibilityLabel={`Remove ${getSelectionLabel()} pick`}
         >
-          <Text style={styles.removeButtonText}>✕</Text>
+          <XIcon size={14} color="#ef4444" weight="bold" />
         </Pressable>
       )}
     </View>
@@ -341,11 +342,6 @@ const styles = StyleSheet.create({
   removeButtonPressed: {
     backgroundColor: 'rgba(239, 68, 68, 0.25)',
     transform: [{ scale: 0.96 }],
-  },
-  removeButtonText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
 

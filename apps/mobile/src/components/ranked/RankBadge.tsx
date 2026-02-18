@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Rank, RANK_DISPLAY } from '@pick-rivals/shared-types';
 import { LUXURY_THEME, SHADOWS } from '../../constants/theme';
+import { TierIcon } from '../ui/TierIcon';
 
 // =====================================================
 // Types
@@ -31,18 +32,6 @@ const SIZES: Record<BadgeSize, { diameter: number; fontSize: number; iconSize: n
   md: { diameter: 60, fontSize: 12, iconSize: 24 },
   lg: { diameter: 80, fontSize: 14, iconSize: 32 },
   hero: { diameter: 120, fontSize: 18, iconSize: 48 },
-};
-
-// =====================================================
-// Tier Icons (using emoji for simplicity)
-// =====================================================
-
-const TIER_ICONS: Record<string, string> = {
-  BRONZE: '🥉',
-  SILVER: '🥈',
-  GOLD: '🥇',
-  PLATINUM: '💎',
-  DIAMOND: '👑',
 };
 
 // =====================================================
@@ -183,9 +172,7 @@ export function RankBadge({
             isMaxRank && SHADOWS.goldGlow,
           ]}
         >
-          <Text style={[styles.icon, { fontSize: sizeConfig.iconSize }]}>
-            {TIER_ICONS[info.tier]}
-          </Text>
+          <TierIcon tier={info.tier} size={sizeConfig.iconSize} />
           <Text
             style={[
               styles.division,
@@ -235,9 +222,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
     ...SHADOWS.card,
-  },
-  icon: {
-    textAlign: 'center',
   },
   division: {
     color: '#000000',

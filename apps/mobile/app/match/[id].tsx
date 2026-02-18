@@ -12,6 +12,7 @@
 // - Opponent presence tracking
 
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import { WarningIcon } from 'phosphor-react-native';
 import {
   View,
   Text,
@@ -121,7 +122,7 @@ function ErrorState({
 }) {
   return (
     <View style={styles.centerContainer}>
-      <Text style={styles.errorIcon}>{'\u26A0\uFE0F'}</Text>
+      <WarningIcon size={48} color="#f59e0b" weight="duotone" style={{ marginBottom: 16 }} />
       <Text style={styles.errorTitle}>Error Loading Match</Text>
       <Text style={styles.errorMessage}>{error}</Text>
       <View style={styles.errorButtons}>
@@ -718,10 +719,6 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 15,
     marginTop: 16,
-  },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   errorTitle: {
     color: '#ffffff',

@@ -178,9 +178,13 @@ class SocketService {
         return;
       }
 
-      const token = authStore.accessToken;
-      if (!token) {
-        console.log('[Socket] No access token - skipping connection');
+      // Proactively ensure token is valid (refreshes if near-expiry)
+      // This prevents the TOKEN_EXPIRED → refresh → reconnect cycle
+      let token: string;
+      try {
+        token = await TokenRefreshService.ensureValidToken();
+      } catch {
+        console.log('[Socket] No valid access token available - skipping connection');
         this.setConnectionState('disconnected');
         return;
       }
@@ -234,6 +238,8 @@ class SocketService {
     }
 
     this.reconnectionAttempt = 0;
+    this.tokenRefreshRetryCount = 0;
+    this.isRefreshingToken = false;
     this.setConnectionState('disconnected');
   }
 
@@ -413,6 +419,8 @@ class SocketService {
       console.log('[Socket] Connected! Socket ID:', this.socket?.id);
       this.connectionGeneration++;
       this.reconnectionAttempt = 0;
+      this.tokenRefreshRetryCount = 0;
+      this.isRefreshingToken = false;
       this.setConnectionState('connected');
 
       // Re-join active rooms after reconnect
@@ -455,14 +463,14 @@ class SocketService {
 
     // Handle connection error
     this.socket.on('connect_error', async (error) => {
-      console.error('[Socket] Connection error:', error.message);
-
-      // Check if this is a token expiration error
+      // Check if this is a token expiration error (expected & handled)
       if (error.message === 'TOKEN_EXPIRED' || error.message === 'jwt expired') {
+        console.log('[Socket] Connection rejected: token expired, attempting refresh...');
         await this.handleTokenExpired();
         return;
       }
 
+      console.error('[Socket] Connection error:', error.message);
       this.setConnectionState('error');
       this.attemptReconnection();
     });
@@ -527,9 +535,9 @@ class SocketService {
     }
 
     // Check retry count to prevent infinite loops
+    // Counter is only reset by disconnect() or successful connect — never here
     if (this.tokenRefreshRetryCount >= TOKEN_REFRESH_CONFIG.maxRetries) {
       console.warn('[Socket] Max token refresh retries reached. Giving up.');
-      this.tokenRefreshRetryCount = 0;
       this.setConnectionState('error');
       return;
     }
@@ -542,9 +550,9 @@ class SocketService {
     try {
       // Use centralized token refresh service
       // This ensures only ONE refresh happens across the entire app
-      const newAccessToken = await TokenRefreshService.refresh();
+      await TokenRefreshService.refresh();
 
-      console.log('[Socket] ✅ Token refreshed successfully. Reconnecting with new token...');
+      console.log('[Socket] Token refreshed successfully. Reconnecting with new token...');
 
       // Disconnect the current socket
       if (this.socket) {
@@ -553,8 +561,9 @@ class SocketService {
         this.socket = null;
       }
 
-      // Reset retry count on successful refresh
-      this.tokenRefreshRetryCount = 0;
+      // Note: tokenRefreshRetryCount is reset in the 'connect' event handler,
+      // NOT here — this prevents infinite loops when refresh succeeds but
+      // reconnection still fails (e.g. server clock skew).
 
       // Reconnect with the new token
       // The new token is now in the auth store, connect() will use it

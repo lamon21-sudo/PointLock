@@ -6,6 +6,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
+import { CheckCircleIcon } from 'phosphor-react-native';
 import { LUXURY_THEME } from '../../constants/theme';
 
 export interface MinSpendProgressBarProps {
@@ -99,7 +100,7 @@ export function MinSpendProgressBar({
           {currentSpend} / {minimumSpend} coins
         </Text>
         {isMinimumMet && (
-          <Text style={styles.checkmark}>✓</Text>
+          <CheckCircleIcon size={14} color={LUXURY_THEME.status.success} weight="duotone" />
         )}
       </View>
     </View>
@@ -138,11 +139,6 @@ const styles = StyleSheet.create({
   },
   labelMet: {
     color: LUXURY_THEME.status.success,
-  },
-  checkmark: {
-    color: LUXURY_THEME.status.success,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
 

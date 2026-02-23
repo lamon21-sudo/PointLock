@@ -10,7 +10,7 @@ export default function EventLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#0A0A0A' },
-        animation: 'slide_from_right',
+        animation: 'fade',
       }}
     />
   );

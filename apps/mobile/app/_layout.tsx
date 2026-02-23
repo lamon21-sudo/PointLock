@@ -299,6 +299,16 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="event"
+        options={{
+          headerShown: false,
+          // Allow swipe-back from event detail
+          gestureEnabled: true,
+          // Fade complements the hero matchup morph (slide would conflict)
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
         name="demo"
         options={{
           headerShown: false,

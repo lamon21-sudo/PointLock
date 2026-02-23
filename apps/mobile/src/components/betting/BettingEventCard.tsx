@@ -195,6 +195,41 @@ export function BettingEventCard({
     league: event.league,
   }), [event]);
 
+  // Hero transition: ref for measuring matchup position on screen
+  const matchupRef = useRef<View>(null);
+  const router = useRouter();
+
+  const handleNavigateToDetail = useCallback(() => {
+    if (!matchupRef.current) {
+      // Fallback: navigate without hero animation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.push(`/event/${event.id}` as any);
+      return;
+    }
+    matchupRef.current.measureInWindow((x, y, width, height) => {
+      const heroSource =
+        width > 0 && height > 0
+          ? JSON.stringify({ pageX: x, pageY: y, width, height })
+          : undefined;
+      const eventSnapshot = JSON.stringify({
+        id: event.id,
+        sport: event.sport,
+        league: event.league,
+        homeTeamName: event.homeTeamName,
+        homeTeamAbbr: event.homeTeamAbbr,
+        awayTeamName: event.awayTeamName,
+        awayTeamAbbr: event.awayTeamAbbr,
+        scheduledAt: new Date(event.scheduledAt).toISOString(),
+        status: event.status,
+      });
+      router.push({
+        pathname: '/event/[id]',
+        params: { id: event.id, heroSource, eventSnapshot },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+    });
+  }, [event, router]);
+
   // Entry animation
   useEffect(() => {
     Animated.parallel([
@@ -372,34 +407,42 @@ export function BettingEventCard({
 
       {/* Main Card */}
       <View style={[styles.card, eventIsLive && styles.cardLive]}>
-        {/* Header Row: Sport Badge + Status | Time */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <SportBadge sport={event.sport} />
-            {eventIsLive && <LiveIndicator />}
-            {!eventIsLive && event.status.toUpperCase() === 'STARTED' && (
-              <View style={styles.startedBadge}>
-                <Text style={styles.startedText}>Started</Text>
-              </View>
-            )}
+        {/* Tappable Header + Matchup — navigates to event detail with hero animation */}
+        <Pressable
+          ref={matchupRef}
+          onPress={handleNavigateToDetail}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${awayAbbr} at ${homeAbbr} details`}
+        >
+          {/* Header Row: Sport Badge + Status | Time */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <SportBadge sport={event.sport} />
+              {eventIsLive && <LiveIndicator />}
+              {!eventIsLive && event.status.toUpperCase() === 'STARTED' && (
+                <View style={styles.startedBadge}>
+                  <Text style={styles.startedText}>Started</Text>
+                </View>
+              )}
+            </View>
+            <GameClock status={event.status} scheduledAt={String(event.scheduledAt)} />
           </View>
-          <GameClock status={event.status} scheduledAt={String(event.scheduledAt)} />
-        </View>
 
-        {/* Centered Matchup Section */}
-        <View style={styles.matchupSection}>
-          <View style={styles.matchupRow}>
-            <View style={styles.teamBlock}>
-              <Text style={styles.teamAbbr}>{awayAbbr}</Text>
-              <Text style={styles.teamLabel}>Away</Text>
-            </View>
-            <Text style={styles.atText}>at</Text>
-            <View style={styles.teamBlock}>
-              <Text style={styles.teamAbbr}>{homeAbbr}</Text>
-              <Text style={styles.teamLabel}>Home</Text>
+          {/* Centered Matchup Section */}
+          <View style={styles.matchupSection}>
+            <View style={styles.matchupRow}>
+              <View style={styles.teamBlock}>
+                <Text style={styles.teamAbbr}>{awayAbbr}</Text>
+                <Text style={styles.teamLabel}>Away</Text>
+              </View>
+              <Text style={styles.atText}>at</Text>
+              <View style={styles.teamBlock}>
+                <Text style={styles.teamAbbr}>{homeAbbr}</Text>
+                <Text style={styles.teamLabel}>Home</Text>
+              </View>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         {/* Betting Grid - 3x2 Layout */}
         <View style={styles.oddsGrid}>
@@ -527,7 +570,7 @@ export function BettingEventCard({
         </View>
 
         {/* View Props Button */}
-        <ViewPropsButton eventId={event.id} />
+        <ViewPropsButton onPress={handleNavigateToDetail} />
       </View>
     </Animated.View>
   );
@@ -536,18 +579,11 @@ export function BettingEventCard({
 /**
  * Button to navigate to player props screen
  */
-function ViewPropsButton({ eventId }: { eventId: string }) {
-  const router = useRouter();
-
-  const handlePress = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    router.push(`/event/${eventId}` as any);
-  }, [router, eventId]);
-
+function ViewPropsButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       style={styles.viewPropsButton}
-      onPress={handlePress}
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="View player props"
     >

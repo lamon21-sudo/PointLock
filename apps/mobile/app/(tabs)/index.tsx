@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Share, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -16,6 +16,9 @@ import { LUXURY_THEME } from '../../src/constants/theme';
 import { useTierStatus } from '../../src/hooks/useTierStatus';
 import { useSlips } from '../../src/hooks/useSlips';
 import { PickTier } from '@pick-rivals/shared-types';
+import { useOnboardingStore } from '../../src/stores/onboarding.store';
+import { OnboardingOverlay } from '../../src/components/onboarding/OnboardingOverlay';
+import { WelcomeBonusBanner } from '../../src/components/onboarding/WelcomeBonusBanner';
 
 // =====================================================
 // Helper Functions
@@ -36,7 +39,38 @@ function getTierName(tier: PickTier): string {
 // =====================================================
 
 export default function HomeScreen() {
-  // Data hooks
+  // ---- Onboarding state ----
+  const {
+    hasCompletedOnboarding,
+    hasCompletedDemoSlip,
+    featureFlags,
+    isOnboardingVisible,
+    showOnboarding,
+  } = useOnboardingStore();
+
+  // Local banner dismissed state — user can hide the bonus banner
+  // without it triggering again until they log out.
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+
+  // Trigger the walkthrough as soon as the screen mounts if the
+  // user hasn't completed it yet and the feature flag is on.
+  useEffect(() => {
+    if (!hasCompletedOnboarding && featureFlags.onboardingEnabled) {
+      showOnboarding();
+    }
+  }, [hasCompletedOnboarding, featureFlags.onboardingEnabled, showOnboarding]);
+
+  // Show the bonus banner for users who haven't completed onboarding
+  const showBonusBanner =
+    !hasCompletedOnboarding &&
+    featureFlags.onboardingEnabled &&
+    !isBannerDismissed;
+
+  // Show the Try Demo card when the flag is enabled and demo not yet done
+  const showDemoCard =
+    featureFlags.demoSlipEnabled && !hasCompletedDemoSlip;
+
+  // ---- Data hooks ----
   const {
     currentTier,
     progressToNextTier,
@@ -114,6 +148,13 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ============================================= */}
+        {/* Welcome Bonus Banner (new users only) */}
+        {/* ============================================= */}
+        {showBonusBanner && (
+          <WelcomeBonusBanner onDismiss={() => setIsBannerDismissed(true)} />
+        )}
+
+        {/* ============================================= */}
         {/* Hero Section - Balance */}
         {/* ============================================= */}
         <View style={styles.heroSection}>
@@ -180,13 +221,23 @@ export default function HomeScreen() {
               onPress={handleInviteFriend}
               style={styles.actionCard}
             />
-            <GameModeCard
-              title="Random"
-              subtitle="Public lobby"
-              iconName="shuffle"
-              onPress={handleRandomMatch}
-              style={styles.actionCard}
-            />
+            {showDemoCard ? (
+              <GameModeCard
+                title="Try Demo"
+                subtitle="Practice mode"
+                iconName="school"
+                onPress={() => router.push('/demo/slip' as Parameters<typeof router.push>[0])}
+                style={styles.actionCard}
+              />
+            ) : (
+              <GameModeCard
+                title="Random"
+                subtitle="Public lobby"
+                iconName="shuffle"
+                onPress={handleRandomMatch}
+                style={styles.actionCard}
+              />
+            )}
           </View>
         </View>
 
@@ -219,6 +270,11 @@ export default function HomeScreen() {
         {/* Bottom spacing for floating dock */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* ============================================= */}
+      {/* Onboarding Overlay (FTUE walkthrough) */}
+      {/* ============================================= */}
+      <OnboardingOverlay visible={isOnboardingVisible} />
     </SafeAreaView>
   );
 }

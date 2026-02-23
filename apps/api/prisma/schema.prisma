@@ -250,6 +250,12 @@ model User {
   totalCoinsEarned    BigInt    @default(0) @map("total_coins_earned")
   lastActiveAt        DateTime? @default(now()) @map("last_active_at")
 
+  // =====================================================
+  // Onboarding / FTUE Tracking
+  // =====================================================
+  hasCompletedOnboarding Boolean @default(false) @map("has_completed_onboarding")
+  hasCompletedDemoSlip   Boolean @default(false) @map("has_completed_demo_slip")
+
   // Task 0.3: New Relations
   friendshipsInitiated Friendship[]        @relation("FriendshipRequester")
   friendshipsReceived  Friendship[]        @relation("FriendshipAddressee")

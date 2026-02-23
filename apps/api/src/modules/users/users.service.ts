@@ -12,6 +12,7 @@ import { logger } from '../../utils/logger';
 import { UpdateProfileInput } from './users.schemas';
 import { calculateTierFromStats, TIER_RANK } from '../../lib/tier.service';
 import { bigIntToNumber } from '../../lib/wallet.service';
+import { config } from '../../config';
 
 // ===========================================
 // Types
@@ -38,6 +39,16 @@ export interface UserProfile {
   currentTier: number;
   /** Lifetime coins earned (used for tier calculation) */
   totalCoinsEarned: number;
+  /** Whether user has completed the onboarding walkthrough */
+  hasCompletedOnboarding: boolean;
+  /** Whether user has completed the demo slip tutorial */
+  hasCompletedDemoSlip: boolean;
+  /** Server-side feature flags for FTUE features */
+  featureFlags: {
+    onboardingEnabled: boolean;
+    demoSlipEnabled: boolean;
+    bettingTooltipsEnabled: boolean;
+  };
 }
 
 // ===========================================
@@ -96,6 +107,8 @@ export async function getMyProfile(userId: string): Promise<UserProfile> {
       bestStreak: true,
       createdAt: true,
       totalCoinsEarned: true,
+      hasCompletedOnboarding: true,
+      hasCompletedDemoSlip: true,
     },
   });
 
@@ -121,6 +134,9 @@ export async function getMyProfile(userId: string): Promise<UserProfile> {
     memberSince: user.createdAt.toISOString(),
     currentTier: TIER_RANK[tier],
     totalCoinsEarned,
+    hasCompletedOnboarding: user.hasCompletedOnboarding,
+    hasCompletedDemoSlip: user.hasCompletedDemoSlip,
+    featureFlags: config.featureFlags,
   };
 }
 
@@ -150,6 +166,8 @@ export async function getPublicProfile(userId: string): Promise<UserProfile> {
       bestStreak: true,
       createdAt: true,
       totalCoinsEarned: true,
+      hasCompletedOnboarding: true,
+      hasCompletedDemoSlip: true,
     },
   });
 
@@ -175,6 +193,16 @@ export async function getPublicProfile(userId: string): Promise<UserProfile> {
     memberSince: user.createdAt.toISOString(),
     currentTier: TIER_RANK[tier],
     totalCoinsEarned,
+    // Onboarding fields are not relevant for public profiles.
+    // Included to satisfy the unified UserProfile contract.
+    hasCompletedOnboarding: user.hasCompletedOnboarding,
+    hasCompletedDemoSlip: user.hasCompletedDemoSlip,
+    // Feature flags are not exposed on public profiles.
+    featureFlags: {
+      onboardingEnabled: false,
+      demoSlipEnabled: false,
+      bettingTooltipsEnabled: false,
+    },
   };
 }
 
@@ -226,6 +254,8 @@ export async function updateProfile(
       bestStreak: true,
       createdAt: true,
       totalCoinsEarned: true,
+      hasCompletedOnboarding: true,
+      hasCompletedDemoSlip: true,
     },
   });
 
@@ -245,5 +275,27 @@ export async function updateProfile(
     memberSince: user.createdAt.toISOString(),
     currentTier: TIER_RANK[tier],
     totalCoinsEarned,
+    hasCompletedOnboarding: user.hasCompletedOnboarding,
+    hasCompletedDemoSlip: user.hasCompletedDemoSlip,
+    featureFlags: config.featureFlags,
   };
+}
+
+/**
+ * Update onboarding status flags.
+ * Only allows setting flags to `true` (one-way, cannot be unset by client).
+ *
+ * @param userId - The authenticated user's ID
+ * @param data - The onboarding flags to set (only `true` values accepted by schema)
+ */
+export async function updateOnboardingStatus(
+  userId: string,
+  data: { hasCompletedOnboarding?: true; hasCompletedDemoSlip?: true }
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+
+  logger.info(`Onboarding status updated for user: ${userId}`, { data });
 }

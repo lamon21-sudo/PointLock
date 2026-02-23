@@ -9,12 +9,14 @@ import { ApiResponse, ERROR_CODES } from '@pick-rivals/shared-types';
 import {
   updateProfileSchema,
   userIdParamSchema,
+  updateOnboardingSchema,
   UpdateProfileInput,
 } from './users.schemas';
 import {
   getMyProfile,
   getPublicProfile,
   updateProfile,
+  updateOnboardingStatus,
   UserProfile,
 } from './users.service';
 import { requireAuth, optionalAuth, getAuthenticatedUser } from '../../middleware';
@@ -190,6 +192,66 @@ router.patch(
       };
 
       logger.info(`Profile updated successfully for user: ${user.id}`);
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ===========================================
+// PATCH /me/onboarding
+// ===========================================
+// Update the authenticated user's onboarding status.
+// Requires: Bearer token authentication
+// Input: { hasCompletedOnboarding?: true, hasCompletedDemoSlip?: true }
+// Response: Success confirmation
+// CRITICAL: Flags can only be set to true (one-way)
+
+router.patch(
+  '/me/onboarding',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = getAuthenticatedUser(req);
+
+      logger.info(`Onboarding status update requested for user: ${user.id}`);
+
+      // Validate request body
+      const parsed = updateOnboardingSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        logger.warn('Invalid onboarding update data', {
+          userId: user.id,
+          errors: parsed.error.errors,
+        });
+        throw new BadRequestError(
+          'Invalid onboarding data: ' + parsed.error.errors.map(e => e.message).join(', '),
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      const updateData = parsed.data;
+
+      // Check if there's actually anything to update
+      if (Object.keys(updateData).length === 0) {
+        throw new BadRequestError(
+          'No update data provided',
+          ERROR_CODES.VALIDATION_ERROR
+        );
+      }
+
+      await updateOnboardingStatus(user.id, updateData);
+
+      const response: ApiResponse<{ updated: true }> = {
+        success: true,
+        data: { updated: true },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: generateRequestId(),
+        },
+      };
 
       res.status(200).json(response);
     } catch (error) {

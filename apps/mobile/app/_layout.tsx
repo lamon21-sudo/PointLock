@@ -298,6 +298,14 @@ function RootLayoutNav() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen
+        name="demo"
+        options={{
+          headerShown: false,
+          // Allow swipe-back to exit practice mode
+          gestureEnabled: true,
+        }}
+      />
     </Stack>
   );
 }

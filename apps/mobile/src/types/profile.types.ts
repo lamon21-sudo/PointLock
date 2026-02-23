@@ -48,6 +48,13 @@ export const MOCK_USER_PROFILE: UserProfileResponse = {
   memberSince: new Date().toISOString(),
   currentTier: 0, // FREE tier
   totalCoinsEarned: 0,
+  hasCompletedOnboarding: true,
+  hasCompletedDemoSlip: true,
+  featureFlags: {
+    onboardingEnabled: true,
+    demoSlipEnabled: true,
+    bettingTooltipsEnabled: true,
+  },
 };
 
 // =====================================================

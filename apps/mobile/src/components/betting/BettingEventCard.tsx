@@ -29,6 +29,8 @@ import {
   SLIP_MAX_PICKS,
 } from '../../types/slip.types';
 import { OddsButton } from './OddsButton';
+import { BettingTooltip } from './BettingTooltip';
+import { useOnboardingStore } from '../../stores/onboarding.store';
 
 // =====================================================
 // Types
@@ -161,6 +163,11 @@ export function BettingEventCard({
 }: BettingEventCardProps): React.ReactElement {
   // Mode Detection
   const useExternalState = existingPicks !== undefined && onPickSelect !== undefined;
+
+  // Feature flags — tooltips are conditionally shown to new users
+  const bettingTooltipsEnabled = useOnboardingStore(
+    (s) => s.featureFlags.bettingTooltipsEnabled
+  );
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -399,13 +406,22 @@ export function BettingEventCard({
           {/* Column Headers */}
           <View style={styles.gridHeaderRow}>
             <View style={styles.gridHeaderCell}>
-              <Text style={styles.gridHeaderText}>Spread</Text>
+              <View style={styles.gridHeaderWithTooltip}>
+                <Text style={styles.gridHeaderText}>Spread</Text>
+                {bettingTooltipsEnabled && <BettingTooltip term="spread" />}
+              </View>
             </View>
             <View style={styles.gridHeaderCell}>
-              <Text style={styles.gridHeaderText}>Total</Text>
+              <View style={styles.gridHeaderWithTooltip}>
+                <Text style={styles.gridHeaderText}>Total</Text>
+                {bettingTooltipsEnabled && <BettingTooltip term="total" />}
+              </View>
             </View>
             <View style={styles.gridHeaderCell}>
-              <Text style={styles.gridHeaderText}>Money</Text>
+              <View style={styles.gridHeaderWithTooltip}>
+                <Text style={styles.gridHeaderText}>Money</Text>
+                {bettingTooltipsEnabled && <BettingTooltip term="moneyline" />}
+              </View>
             </View>
           </View>
 
@@ -709,6 +725,11 @@ const styles = StyleSheet.create({
   gridHeaderCell: {
     flex: 1,
     alignItems: 'center',
+  },
+  gridHeaderWithTooltip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   gridHeaderText: {
     color: LUXURY_THEME.text.muted,

@@ -33,9 +33,20 @@ export const userIdParamSchema = z.object({
   id: z.string().uuid('Invalid user ID format'),
 });
 
+/**
+ * Schema for updating onboarding status.
+ * Only allows setting flags to true (one-way).
+ * The client cannot unset these flags once set.
+ */
+export const updateOnboardingSchema = z.object({
+  hasCompletedOnboarding: z.literal(true).optional(),
+  hasCompletedDemoSlip: z.literal(true).optional(),
+});
+
 // ===========================================
 // Types
 // ===========================================
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UserIdParam = z.infer<typeof userIdParamSchema>;
+export type UpdateOnboardingInput = z.infer<typeof updateOnboardingSchema>;

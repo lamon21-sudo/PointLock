@@ -58,6 +58,16 @@ export interface UpdateUserInput {
 }
 
 // =====================================================
+// Feature Flags
+// =====================================================
+
+export interface FeatureFlags {
+  onboardingEnabled: boolean;
+  demoSlipEnabled: boolean;
+  bettingTooltipsEnabled: boolean;
+}
+
+// =====================================================
 // Profile Response Types
 // =====================================================
 
@@ -82,6 +92,12 @@ export interface UserProfileResponse {
   currentTier: number;
   /** Lifetime coins earned (used for tier calculation, not current balance) */
   totalCoinsEarned: number;
+  /** Whether user has completed the onboarding walkthrough */
+  hasCompletedOnboarding: boolean;
+  /** Whether user has completed the demo slip tutorial */
+  hasCompletedDemoSlip: boolean;
+  /** Server-side feature flags for FTUE features */
+  featureFlags: FeatureFlags;
 }
 
 // =====================================================

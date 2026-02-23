@@ -91,6 +91,13 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   },
+
+  // Feature Flags (FTUE / Onboarding)
+  featureFlags: {
+    onboardingEnabled: process.env.FEATURE_ONBOARDING_ENABLED !== 'false',
+    demoSlipEnabled: process.env.FEATURE_DEMO_SLIP_ENABLED !== 'false',
+    bettingTooltipsEnabled: process.env.FEATURE_BETTING_TOOLTIPS_ENABLED !== 'false',
+  },
 } as const;
 
 // Validate required environment variables

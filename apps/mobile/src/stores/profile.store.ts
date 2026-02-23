@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { ProfileService } from '../services/profile.service';
 import type { UserProfileResponse, UpdateUserInput } from '@pick-rivals/shared-types';
+import { useOnboardingStore } from './onboarding.store';
 
 // =====================================================
 // Types
@@ -71,6 +72,11 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       const profile = await ProfileService.getMyProfile();
       set({ myProfile: profile, isLoadingMyProfile: false });
+
+      // Sync onboarding state from server profile so the store always
+      // reflects the canonical server truth after a fresh load.
+      const { initFromProfile } = useOnboardingStore.getState();
+      initFromProfile(profile);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch profile';
       set({ myProfileError: message, isLoadingMyProfile: false });

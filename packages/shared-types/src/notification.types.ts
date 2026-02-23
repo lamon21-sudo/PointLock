@@ -113,3 +113,85 @@ export interface MatchSettledSocketPayload {
   /** Human-readable settlement reason */
   reason: string;
 }
+
+// =====================================================
+// Notification Categories & Preferences
+// =====================================================
+
+export enum NotificationCategory {
+  SETTLEMENT = 'SETTLEMENT',
+  PVP_CHALLENGE = 'PVP_CHALLENGE',
+  SLIP_EXPIRING = 'SLIP_EXPIRING',
+  SOCIAL = 'SOCIAL',
+  GAME_REMINDER = 'GAME_REMINDER',
+  LEADERBOARD = 'LEADERBOARD',
+  DAILY_DIGEST = 'DAILY_DIGEST',
+  WEEKLY_RECAP = 'WEEKLY_RECAP',
+  WIN_STREAK = 'WIN_STREAK',
+  INACTIVITY = 'INACTIVITY',
+}
+
+export enum NotificationUrgency {
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
+
+export enum NotificationStatus {
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  SUPPRESSED_CAP = 'SUPPRESSED_CAP',
+  SUPPRESSED_QUIET = 'SUPPRESSED_QUIET',
+  SUPPRESSED_DISABLED = 'SUPPRESSED_DISABLED',
+  SUPPRESSED_DEDUPE = 'SUPPRESSED_DEDUPE',
+  FAILED = 'FAILED',
+  PENDING = 'PENDING',
+}
+
+export interface NotificationPreferenceDTO {
+  settlementEnabled: boolean;
+  pvpChallengeEnabled: boolean;
+  slipExpiringEnabled: boolean;
+  socialEnabled: boolean;
+  gameReminderEnabled: boolean;
+  leaderboardEnabled: boolean;
+  dailyDigestEnabled: boolean;
+  weeklyRecapEnabled: boolean;
+  winStreakEnabled: boolean;
+  inactivityEnabled: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  digestTimeLocal: string;
+  recapDayOfWeek: number;
+  allNotificationsEnabled: boolean;
+}
+
+export interface NotificationInboxItemDTO {
+  id: string;
+  category: NotificationCategory;
+  urgency: NotificationUrgency;
+  title: string;
+  body: string;
+  iconType: string | null;
+  deepLinkType: string;
+  entityId: string | null;
+  deepLinkUrl: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPayload {
+  type: string;
+  entityId?: string;
+  deepLinkUrl?: string;
+  category?: NotificationCategory;
+}
+
+export interface RegisterDeviceTokenDTO {
+  token: string;
+  platform: 'ios' | 'android';
+  deviceId?: string;
+  appVersion?: string;
+}

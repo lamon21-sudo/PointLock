@@ -316,6 +316,15 @@ function RootLayoutNav() {
           gestureEnabled: true,
         }}
       />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          // Notifications stack manages its own header via _layout.tsx
+          headerShown: false,
+          // Allow swipe-back from notification screens
+          gestureEnabled: true,
+        }}
+      />
     </Stack>
   );
 }

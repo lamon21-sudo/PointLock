@@ -263,6 +263,12 @@ model User {
   seasonEntries        SeasonEntry[]
   rewardClaims         SeasonRewardClaim[]
 
+  // Notification System Relations
+  notificationPreference NotificationPreference?
+  deviceTokens           UserDeviceToken[]
+  notificationSendLogs   NotificationSendLog[]
+  notificationInbox      NotificationInboxItem[]
+
   @@index([email])
   @@index([username])
   @@index([referralCode])
@@ -1047,6 +1053,40 @@ enum MatchOutcome {
   DRAW
 }
 
+// =====================================================
+// NOTIFICATION SYSTEM ENUMS
+// =====================================================
+
+enum NotificationCategory {
+  SETTLEMENT
+  PVP_CHALLENGE
+  SLIP_EXPIRING
+  SOCIAL
+  GAME_REMINDER
+  LEADERBOARD
+  DAILY_DIGEST
+  WEEKLY_RECAP
+  WIN_STREAK
+  INACTIVITY
+}
+
+enum NotificationUrgency {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum NotificationStatus {
+  SENT
+  DELIVERED
+  SUPPRESSED_CAP
+  SUPPRESSED_QUIET
+  SUPPRESSED_DISABLED
+  SUPPRESSED_DEDUPE
+  FAILED
+  PENDING
+}
+
 model PlacementMatch {
   id            String       @id @default(uuid())
   seasonEntryId String       @map("season_entry_id")
@@ -1084,4 +1124,141 @@ model PlayerTierAssignment {
   @@index([tier, updatedAt])
   @@index([playerId])
   @@map("player_tier_assignments")
+}
+
+// =====================================================
+// NOTIFICATION PREFERENCES
+// =====================================================
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+
+  // Per-category toggles (all default ON)
+  settlementEnabled  Boolean @default(true) @map("settlement_enabled")
+  pvpChallengeEnabled Boolean @default(true) @map("pvp_challenge_enabled")
+  slipExpiringEnabled Boolean @default(true) @map("slip_expiring_enabled")
+  socialEnabled       Boolean @default(true) @map("social_enabled")
+  gameReminderEnabled Boolean @default(true) @map("game_reminder_enabled")
+  leaderboardEnabled  Boolean @default(true) @map("leaderboard_enabled")
+  dailyDigestEnabled  Boolean @default(true) @map("daily_digest_enabled")
+  weeklyRecapEnabled  Boolean @default(true) @map("weekly_recap_enabled")
+  winStreakEnabled     Boolean @default(true) @map("win_streak_enabled")
+  inactivityEnabled   Boolean @default(true) @map("inactivity_enabled")
+
+  // Quiet hours (stored in user's local timezone)
+  quietHoursEnabled Boolean @default(true) @map("quiet_hours_enabled")
+  quietHoursStart   String  @default("22:00") @map("quiet_hours_start")
+  quietHoursEnd     String  @default("08:00") @map("quiet_hours_end")
+
+  // Digest scheduling preferences
+  digestTimeLocal String @default("18:00") @map("digest_time_local")
+  recapDayOfWeek  Int    @default(1) @map("recap_day_of_week")
+
+  // Master kill switch
+  allNotificationsEnabled Boolean @default(true) @map("all_notifications_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// =====================================================
+// USER DEVICE TOKENS (Multi-device push)
+// =====================================================
+
+model UserDeviceToken {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  token         String
+  platform      String    // "ios" | "android"
+  deviceId      String?   @map("device_id")
+  appVersion    String?   @map("app_version")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastUsedAt    DateTime  @default(now()) @map("last_used_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deactivatedAt DateTime? @map("deactivated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId, isActive])
+  @@index([token])
+  @@map("user_device_tokens")
+}
+
+// =====================================================
+// NOTIFICATION SEND LOGS
+// =====================================================
+
+model NotificationSendLog {
+  id       String               @id @default(uuid())
+  userId   String               @map("user_id")
+  category NotificationCategory
+  urgency  NotificationUrgency
+  status   NotificationStatus
+
+  title String
+  body  String
+
+  deepLinkType String? @map("deep_link_type")
+  entityId     String? @map("entity_id")
+
+  expoTicketId      String? @map("expo_ticket_id")
+  expoReceiptStatus String? @map("expo_receipt_status")
+  deviceToken       String? @map("device_token")  // Token this ticket was sent to (for targeted deactivation)
+
+  dedupeKey  String? @map("dedupe_key")
+  templateId String? @map("template_id")
+  metadata   Json    @default("{}")
+
+  scheduledFor DateTime? @map("scheduled_for")
+  sentAt       DateTime? @map("sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([dedupeKey])
+  @@index([expoTicketId])
+  @@map("notification_send_logs")
+}
+
+// =====================================================
+// NOTIFICATION INBOX
+// =====================================================
+
+model NotificationInboxItem {
+  id       String               @id @default(uuid())
+  userId   String               @map("user_id")
+  category NotificationCategory
+  urgency  NotificationUrgency
+
+  title    String
+  body     String
+  iconType String? @map("icon_type")
+
+  deepLinkType String  @map("deep_link_type")
+  entityId     String? @map("entity_id")
+  deepLinkUrl  String? @map("deep_link_url")
+
+  isRead Boolean   @default(false) @map("is_read")
+  readAt DateTime? @map("read_at")
+
+  sendLogId String? @map("send_log_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  expiresAt DateTime? @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("notification_inbox_items")
 }

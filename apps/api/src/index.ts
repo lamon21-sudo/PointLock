@@ -31,6 +31,9 @@ import {
   startSeasonWorker,
   stopSeasonWorker,
   scheduleSeasonJobs,
+  startNotificationSchedulerWorker,
+  stopNotificationSchedulerWorker,
+  scheduleNotificationJobs,
 } from "./queues";
 import { bootstrapLeaderboards } from "./lib/leaderboard-bootstrap";
 import {
@@ -111,6 +114,11 @@ async function initializeWorkers(): Promise<void> {
     await scheduleSeasonJobs();
     logger.info("Season worker started (decay 2 AM UTC, season check hourly)");
 
+    // Start the notification scheduler worker
+    startNotificationSchedulerWorker();
+    await scheduleNotificationJobs();
+    logger.info("Notification scheduler worker started");
+
     logger.info("Background workers initialized successfully");
   } catch (error) {
     logger.error("Failed to initialize background workers:", error);
@@ -165,6 +173,7 @@ const gracefulShutdown = async (signal: string) => {
       await stopPlayerTierSyncWorker();
       await stopMatchmakingWorker();
       await stopSeasonWorker();
+      await stopNotificationSchedulerWorker();
       logger.info("Background workers stopped");
 
       // Close Redis connections

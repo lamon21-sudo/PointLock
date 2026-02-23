@@ -12,3 +12,4 @@ export * from './leaderboard.queue';
 export * from './player-tier-sync.queue';
 export * from './matchmaking.queue';
 export * from './season.queue';
+export * from './notification-scheduler.queue';

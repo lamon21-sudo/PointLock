@@ -26,6 +26,7 @@ import { usersRoutes } from './modules/users';
 import { friendsRoutes } from './modules/friends';
 import { matchmakingRouter } from './modules/matchmaking';
 import { rankedRoutes } from './modules/ranked';
+import { notificationsRoutes } from './modules/notifications';
 
 const app: Express = express();
 
@@ -102,6 +103,7 @@ app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/friends', friendsRoutes);
 app.use('/api/v1/matchmaking', matchmakingRouter);
 app.use('/api/v1/ranked', rankedRoutes);
+app.use('/api/v1/notifications', notificationsRoutes);
 
 // Root endpoint
 app.get('/', (req: Request, res: Response) => {

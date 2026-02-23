@@ -7,7 +7,8 @@
 // - Request notification permissions
 // - Get Expo push token
 // - Register token with backend
-// - Handle notification taps for navigation
+// - Setup Android notification channels
+// - Handle notification taps for typed deep link navigation
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -92,9 +93,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
     // Register token with backend
     await registerTokenWithBackend(token);
 
-    // Setup Android notification channel
+    // Setup Android notification channels
     if (Platform.OS === 'android') {
-      await setupAndroidChannel();
+      await setupAndroidChannels();
     }
 
     return token;
@@ -108,6 +109,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 /**
  * Send push token to backend for storage.
+ * Posts to the canonical device-token endpoint including platform and device
+ * metadata so the backend can target by platform or app version.
  */
 async function registerTokenWithBackend(token: string): Promise<void> {
   try {
@@ -116,7 +119,12 @@ async function registerTokenWithBackend(token: string): Promise<void> {
     // "Failed to register token" error when the token is simply stale.
     await TokenRefreshService.ensureValidToken();
 
-    await api.post('/auth/push-token', { token });
+    await api.post('/notifications/device-token', {
+      token,
+      platform: Platform.OS,
+      deviceId: Device.modelName || Device.deviceName || 'unknown',
+      appVersion: Constants.expoConfig?.version || '1.0.0',
+    });
 
     if (__DEV__) {
       console.log('[PushNotification] Token registered with backend');
@@ -130,17 +138,99 @@ async function registerTokenWithBackend(token: string): Promise<void> {
 }
 
 /**
- * Setup Android notification channel for settlement notifications.
+ * Setup all Android notification channels.
+ * Each channel maps to a notification category so users can control
+ * per-category priority directly from Android system settings.
+ * HIGH-importance channels use a more emphatic vibration pattern.
+ * The gold light color (#D4AF37) matches the LUXURY_THEME accent.
  */
-async function setupAndroidChannel(): Promise<void> {
-  await Notifications.setNotificationChannelAsync('match-settlement', {
-    name: 'Match Results',
-    description: 'Notifications for PvP match settlements',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#6366f1',
-    sound: 'default',
-  });
+async function setupAndroidChannels(): Promise<void> {
+  const channels = [
+    { id: 'match-settlement', name: 'Match Results', importance: Notifications.AndroidImportance.HIGH },
+    { id: 'pvp-challenge', name: 'Challenges', importance: Notifications.AndroidImportance.HIGH },
+    { id: 'slip-expiring', name: 'Slip Deadlines', importance: Notifications.AndroidImportance.HIGH },
+    { id: 'social', name: 'Social Activity', importance: Notifications.AndroidImportance.DEFAULT },
+    { id: 'game-reminders', name: 'Game Reminders', importance: Notifications.AndroidImportance.DEFAULT },
+    { id: 'leaderboard', name: 'Leaderboard', importance: Notifications.AndroidImportance.DEFAULT },
+    { id: 'daily-digest', name: 'Daily Digest', importance: Notifications.AndroidImportance.LOW },
+    { id: 'weekly-recap', name: 'Weekly Recap', importance: Notifications.AndroidImportance.LOW },
+    { id: 'win-streak', name: 'Win Streaks', importance: Notifications.AndroidImportance.LOW },
+    { id: 're-engagement', name: 'Updates', importance: Notifications.AndroidImportance.LOW },
+  ];
+
+  for (const channel of channels) {
+    await Notifications.setNotificationChannelAsync(channel.id, {
+      name: channel.name,
+      importance: channel.importance,
+      vibrationPattern: channel.importance === Notifications.AndroidImportance.HIGH
+        ? [0, 250, 250, 250]
+        : [0, 100, 200, 100],
+      lightColor: '#D4AF37',
+      sound: 'default',
+    });
+  }
+}
+
+// =====================================================
+// Deep Link Navigation
+// =====================================================
+
+/**
+ * Route a notification tap to the correct screen based on the typed
+ * `type` field in the notification payload.
+ *
+ * Each case maps to the NotificationCategory enum on the backend.
+ * The `entityId` field carries the primary key for the relevant
+ * resource (match, challenge code, slip, event, user).
+ * The `default` branch handles legacy payloads that still use the
+ * old `screen` / `params` shape.
+ */
+function handleNotificationNavigation(data: Record<string, unknown> | undefined): void {
+  if (!data?.type) return;
+
+  const type = data.type as string;
+  const entityId = (data.entityId as string) || '';
+
+  switch (type) {
+    case 'SETTLEMENT':
+      if (entityId) router.push({ pathname: '/match/[id]', params: { id: entityId } });
+      break;
+    case 'PVP_CHALLENGE':
+      if (entityId) router.push({ pathname: '/challenge/join', params: { code: entityId } });
+      break;
+    case 'SLIP_EXPIRING':
+      if (entityId) router.push({ pathname: '/slip/[id]', params: { id: entityId } });
+      break;
+    case 'GAME_REMINDER':
+      if (entityId) router.push({ pathname: '/event/[id]', params: { id: entityId } });
+      break;
+    case 'SOCIAL':
+      if (entityId) router.push({ pathname: '/users/[id]', params: { id: entityId } });
+      break;
+    case 'LEADERBOARD':
+      router.push('/(tabs)/leaderboard');
+      break;
+    case 'DAILY_DIGEST':
+      router.push('/(tabs)/events');
+      break;
+    case 'WEEKLY_RECAP':
+      router.push('/(tabs)/leaderboard');
+      break;
+    case 'WIN_STREAK':
+      router.push('/(tabs)/matches');
+      break;
+    case 'INACTIVITY':
+      router.push('/(tabs)');
+      break;
+    default:
+      // Fallback: match type for legacy notifications that carry the old
+      // { screen, params: { id } } shape instead of the new typed payload.
+      if (data.screen === 'match' && data.params) {
+        const params = data.params as { id?: string };
+        if (params.id) router.push({ pathname: '/match/[id]', params: { id: params.id } });
+      }
+      break;
+  }
 }
 
 // =====================================================
@@ -155,23 +245,15 @@ export function setupNotificationListeners(): () => void {
   // Handle notification taps (app in foreground or background)
   const responseSubscription = Notifications.addNotificationResponseReceivedListener(
     (response) => {
-      const data = response.notification.request.content.data as {
-        type?: string;
-        screen?: string;
-        params?: { id?: string };
-      } | undefined;
+      const data = response.notification.request.content.data as
+        | Record<string, unknown>
+        | undefined;
 
       if (__DEV__) {
         console.log('[PushNotification] Notification tapped:', data);
       }
 
-      // Navigate to match detail screen
-      if (data?.screen === 'match' && data?.params?.id) {
-        router.push({
-          pathname: '/match/[id]',
-          params: { id: data.params.id },
-        });
-      }
+      handleNotificationNavigation(data);
     }
   );
 
@@ -181,8 +263,8 @@ export function setupNotificationListeners(): () => void {
       if (__DEV__) {
         console.log('[PushNotification] Received in foreground:', notification.request.content);
       }
-      // Notifications are already shown via setNotificationHandler
-      // Could show in-app toast here if desired
+      // Notifications are already shown via setNotificationHandler.
+      // Could surface an in-app toast banner here if desired.
     }
   );
 
@@ -205,33 +287,27 @@ export async function getInitialNotification(): Promise<Notifications.Notificati
 }
 
 /**
- * Handle initial notification if app was opened from notification tap.
- * Call this during app startup.
+ * Handle initial notification if app was opened from a cold-start notification tap.
+ * Call this during app startup after navigation is ready.
+ * The 500 ms delay ensures the Expo Router navigator has mounted before
+ * attempting imperative navigation.
  */
 export async function handleInitialNotification(): Promise<void> {
   const response = await getInitialNotification();
 
   if (response) {
-    const data = response.notification.request.content.data as {
-      type?: string;
-      screen?: string;
-      params?: { id?: string };
-    } | undefined;
+    const data = response.notification.request.content.data as
+      | Record<string, unknown>
+      | undefined;
 
     if (__DEV__) {
       console.log('[PushNotification] App opened from notification:', data);
     }
 
-    // Navigate to match detail screen
-    if (data?.screen === 'match' && data?.params?.id) {
-      // Small delay to ensure navigation is ready
-      setTimeout(() => {
-        router.push({
-          pathname: '/match/[id]',
-          params: { id: data.params.id },
-        });
-      }, 500);
-    }
+    // Small delay to ensure navigation is ready
+    setTimeout(() => {
+      handleNotificationNavigation(data);
+    }, 500);
   }
 }
 

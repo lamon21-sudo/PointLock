@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform, Pressable } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LUXURY_THEME, SHADOWS } from '../../src/constants/theme';
 import { TEST_IDS } from '../../src/constants/testIds';
+import { useNotificationStore } from '../../src/stores/notification.store';
 
 type IconName = 'home' | 'calendar' | 'people' | 'trophy' | 'wallet' | 'person';
 
@@ -46,6 +47,11 @@ const styles = StyleSheet.create({
 });
 
 export default function TabLayout() {
+  // Drive the Profile tab badge from the global notification store.
+  // The store is populated by useNotificationInbox whenever the inbox
+  // is opened and refetched; it starts at 0 on fresh launch.
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
+
   return (
     <Tabs
       screenOptions={{
@@ -146,6 +152,20 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => <TabIcon name="person" focused={focused} />,
           headerTitle: 'Profile',
           tabBarTestID: TEST_IDS.tabs.profile,
+          // Show unread notification count as a badge on the Profile tab.
+          // React Navigation renders tabBarBadge as a small circle above the icon.
+          // undefined hides the badge entirely (cleaner than showing "0").
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: LUXURY_THEME.gold.main,
+            color: LUXURY_THEME.bg.primary,
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            lineHeight: 16,
+          },
         }}
       />
     </Tabs>

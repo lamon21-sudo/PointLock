@@ -324,6 +324,23 @@ export async function sendFriendRequest(
     addresseeId,
   });
 
+  // Notify the addressee about the incoming friend request (fire-and-forget)
+  try {
+    const { sendNotification } = await import('../../services/notifications/notification.service');
+    const { NotificationCategory } = await import('../../services/notifications/notification-categories');
+    await sendNotification({
+      userId: addresseeId,
+      category: NotificationCategory.SOCIAL,
+      templateId: 'social.friend_request',
+      variables: { friendName: friendship.requester.username },
+      entityId: requesterId,
+      dedupeKey: `friend_request:${requesterId}:${addresseeId}`,
+    });
+  } catch (error) {
+    // Notification failure must not block the friend request response
+    logger.warn('[Friends] Failed to send friend request notification', { error });
+  }
+
   return friendship;
 }
 

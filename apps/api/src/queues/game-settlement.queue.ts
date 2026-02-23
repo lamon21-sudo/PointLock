@@ -205,8 +205,11 @@ async function processGameSettlementJob(
 
           // Send push notifications (fire-and-forget, doesn't block settlement)
           try {
-            const { sendMatchSettlementNotifications } = await import(
-              '../services/notifications/push-notification.service'
+            const { sendNotification } = await import(
+              '../services/notifications/notification.service'
+            );
+            const { NotificationCategory } = await import(
+              '../services/notifications/notification-categories'
             );
             const { prisma } = await import('../lib/prisma');
 
@@ -222,18 +225,46 @@ async function processGameSettlementJob(
             });
 
             if (match?.opponentId && match.opponent) {
-              await sendMatchSettlementNotifications(
-                matchId,
-                match.creatorId,
-                match.opponentId,
-                result.winnerId,
-                result.isDraw,
-                result.creatorPoints,
-                result.opponentPoints,
-                match.creator.username,
-                match.opponent.username,
-                result.settledAt
-              );
+              const creatorId = match.creatorId;
+              const opponentId = match.opponentId;
+              const creatorUsername = match.creator.username;
+              const opponentUsername = match.opponent.username;
+              const winnerId = result.winnerId;
+              const isDraw = result.isDraw;
+
+              // Notify creator
+              void sendNotification({
+                userId: creatorId,
+                category: NotificationCategory.SETTLEMENT,
+                templateId: winnerId === creatorId
+                  ? 'settlement.win'
+                  : (isDraw ? 'settlement.draw' : 'settlement.loss'),
+                variables: {
+                  opponentName: opponentUsername,
+                },
+                entityId: matchId,
+                dedupeKey: `settlement:${matchId}:${creatorId}`,
+              });
+
+              // Notify opponent
+              void sendNotification({
+                userId: opponentId,
+                category: NotificationCategory.SETTLEMENT,
+                templateId: winnerId === opponentId
+                  ? 'settlement.win'
+                  : (isDraw ? 'settlement.draw' : 'settlement.loss'),
+                variables: {
+                  opponentName: creatorUsername,
+                },
+                entityId: matchId,
+                dedupeKey: `settlement:${matchId}:${opponentId}`,
+              });
+
+              // Queue win streak check for winner (fire-and-forget)
+              if (winnerId) {
+                const { queueWinStreakCheck } = await import('./notification-scheduler.queue');
+                await queueWinStreakCheck(winnerId, matchId);
+              }
             }
           } catch (notificationError) {
             // Push notification failure should NOT fail settlement

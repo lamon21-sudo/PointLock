@@ -73,6 +73,40 @@ export function isLive(status: string): boolean {
 }
 
 /**
+ * Formats an ISO date string as a compact relative time label.
+ * Examples: "just now", "5m", "2h", "Yesterday", "Mon", "Jan 5"
+ *
+ * Used by notification inbox rows to show when a notification arrived.
+ */
+export function formatRelativeTime(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diffMs = now - then;
+
+  if (diffMs < 0) return 'just now';
+
+  const diffSecs = Math.floor(diffMs / 1000);
+  if (diffSecs < 60) return 'just now';
+
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `${diffMins}m`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) {
+    return new Date(isoString).toLocaleDateString('en-US', { weekday: 'short' });
+  }
+
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
  * Gets a relative time description (e.g., "Starts in 2h", "Live", "Final")
  * Note: Uses uppercase comparison to match Prisma enum values
  */

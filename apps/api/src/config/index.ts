@@ -98,6 +98,19 @@ export const config = {
     demoSlipEnabled: process.env.FEATURE_DEMO_SLIP_ENABLED !== 'false',
     bettingTooltipsEnabled: process.env.FEATURE_BETTING_TOOLTIPS_ENABLED !== 'false',
   },
+
+  // Notifications
+  notifications: {
+    enabled: process.env.FEATURE_NOTIFICATIONS_ENABLED !== 'false',
+    schedulerEnabled: process.env.FEATURE_NOTIFICATION_SCHEDULER_ENABLED === 'true',
+    inactivityEnabled: process.env.FEATURE_NOTIFICATION_INACTIVITY_ENABLED === 'true',
+    dailyCap: parseInt(process.env.NOTIFICATION_DAILY_CAP || '3', 10),
+    defaultQuietHoursStart: '22:00',
+    defaultQuietHoursEnd: '08:00',
+    defaultTimezone: 'America/New_York',
+    expoReceiptCheckDelayMs: 15 * 60 * 1000,
+    inboxExpiryDays: 30,
+  },
 } as const;
 
 // Validate required environment variables

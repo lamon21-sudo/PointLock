@@ -231,8 +231,8 @@ export default function ProfileScreen() {
 
         {/* Settings Menu */}
         <GlassCard style={styles.cardSpacing}>
-          <MenuRow icon="GearSix" label="Settings" onPress={() => {}} />
-          <MenuRow icon="Bell" label="Notifications" onPress={() => {}} />
+          <MenuRow icon="GearSix" label="Settings" onPress={() => router.push('/notifications/settings')} />
+          <MenuRow icon="Bell" label="Notifications" onPress={() => router.push('/notifications')} />
           <MenuRow
             icon="Receipt"
             label="Transaction History"

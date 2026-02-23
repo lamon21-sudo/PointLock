@@ -19,6 +19,7 @@ import {
   MarketType,
 } from '@pick-rivals/shared-types';
 import { LUXURY_THEME } from '../../constants/theme';
+import { Haptics } from '../../services/haptics.service';
 import { isLive, getEventTimeLabel } from '../../utils/date-helpers';
 import { useSlipStore, useIsSlipFull } from '../../stores/slip.store';
 import {
@@ -277,6 +278,17 @@ export function BettingEventCard({
 
       const isCurrentlySelected = isPickSelected(pickType, selection);
       const existingPick = findExistingPick(pickType);
+
+      // Haptic feedback — fire before state mutation so the user
+      // feels the response immediately on press.
+      if (isCurrentlySelected) {
+        Haptics.trigger('pick-deselected');
+      } else if (odds >= 200) {
+        // Significant underdog (American odds +200 or higher)
+        Haptics.trigger('pick-underdog-selected');
+      } else {
+        Haptics.trigger('pick-selected');
+      }
 
       if (useExternalState) {
         if (isCurrentlySelected) {

@@ -3,6 +3,8 @@
 // =====================================================
 // Full-screen modal for slip submission confirmation.
 // Shows all picks, point potential, and handles submission flow.
+// After successful API lock, plays the PointLock ceremony
+// animation before transitioning to the success state.
 
 import React from 'react';
 import {
@@ -18,6 +20,7 @@ import { BlurView } from 'expo-blur';
 import { DraftPick } from '../../types/slip.types';
 import { PickItem } from './PickItem';
 import { PointPotential } from './PointPotential';
+import { PointLockMoment } from './PointLockMoment';
 
 // =====================================================
 // Types
@@ -32,12 +35,16 @@ interface ConfirmationModalProps {
   pointPotential: number;
   /** Whether submission is in progress */
   isSubmitting: boolean;
+  /** Whether the lock-in ceremony is playing */
+  isLockInAnimating: boolean;
   /** Error message from submission attempt */
   error?: string | null;
   /** Called when user confirms submission */
   onConfirm: () => void;
   /** Called when user cancels (only works when not submitting) */
   onCancel: () => void;
+  /** Called when lock-in ceremony animation completes */
+  onLockInComplete: () => void;
 }
 
 // =====================================================
@@ -49,14 +56,18 @@ export function ConfirmationModal({
   picks,
   pointPotential,
   isSubmitting,
+  isLockInAnimating,
   error,
   onConfirm,
   onCancel,
+  onLockInComplete,
 }: ConfirmationModalProps) {
   // Render pick item in compact mode without remove button
   const renderItem = ({ item }: { item: DraftPick }) => (
     <PickItem pick={item} compact showRemove={false} />
   );
+
+  const isBusy = isSubmitting || isLockInAnimating;
 
   return (
     <Modal
@@ -65,8 +76,8 @@ export function ConfirmationModal({
       transparent
       statusBarTranslucent
       onRequestClose={() => {
-        // Only allow back button dismiss when not submitting
-        if (!isSubmitting) {
+        // Only allow back button dismiss when not submitting or animating
+        if (!isBusy) {
           onCancel();
         }
       }}
@@ -77,7 +88,7 @@ export function ConfirmationModal({
           <View style={styles.header}>
             <Text style={styles.title}>Confirm Your Slip</Text>
             <Text style={styles.subtitle}>
-              Review your picks before locking
+              Review your picks before locking in
             </Text>
           </View>
 
@@ -118,15 +129,15 @@ export function ConfirmationModal({
             <Pressable
               style={[
                 styles.cancelButton,
-                isSubmitting && styles.buttonDisabled,
+                isBusy && styles.buttonDisabled,
               ]}
               onPress={onCancel}
-              disabled={isSubmitting}
+              disabled={isBusy}
             >
               <Text
                 style={[
                   styles.cancelButtonText,
-                  isSubmitting && styles.textDisabled,
+                  isBusy && styles.textDisabled,
                 ]}
               >
                 Cancel
@@ -137,18 +148,18 @@ export function ConfirmationModal({
             <Pressable
               style={[
                 styles.confirmButton,
-                isSubmitting && styles.confirmButtonSubmitting,
+                isBusy && styles.confirmButtonSubmitting,
               ]}
               onPress={onConfirm}
-              disabled={isSubmitting}
+              disabled={isBusy}
             >
               {isSubmitting ? (
                 <View style={styles.submittingContent}>
                   <ActivityIndicator color="#ffffff" size="small" />
-                  <Text style={styles.confirmButtonText}>Locking...</Text>
+                  <Text style={styles.confirmButtonText}>Locking In...</Text>
                 </View>
               ) : (
-                <Text style={styles.confirmButtonText}>Lock Slip</Text>
+                <Text style={styles.confirmButtonText}>Lock In</Text>
               )}
             </Pressable>
           </View>
@@ -158,6 +169,12 @@ export function ConfirmationModal({
             Once locked, your picks cannot be changed.
           </Text>
         </View>
+
+        {/* PointLock ceremony — plays on top of the modal after API success */}
+        <PointLockMoment
+          visible={isLockInAnimating}
+          onComplete={onLockInComplete}
+        />
       </BlurView>
     </Modal>
   );

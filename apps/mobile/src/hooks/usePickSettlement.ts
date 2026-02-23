@@ -21,6 +21,7 @@ import {
   type SettlementResult,
   type PickStatus,
 } from '../utils/settlement-helpers';
+import { Haptics } from '../services/haptics.service';
 
 // =====================================================
 // Types
@@ -165,6 +166,12 @@ export function usePickSettlement({
         // Mark as notified
         notifiedRef.current.add(notificationKey);
         persistNotification(notificationKey);
+
+        // Settlement haptic — throttle in the service prevents
+        // double-fire if both toast and modal trigger the same event.
+        if (derivedStatus === 'HIT') Haptics.trigger('settlement-win');
+        else if (derivedStatus === 'MISS') Haptics.trigger('settlement-loss');
+        else if (derivedStatus === 'PUSH') Haptics.trigger('settlement-push');
 
         // Trigger callback
         if (onPickSettled) {

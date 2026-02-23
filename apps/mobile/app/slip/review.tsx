@@ -4,7 +4,7 @@
 // Shows current picks and allows submission via confirmation modal.
 // Implements Task 5.2: Slip Submission Flow.
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -59,6 +59,13 @@ export default function SlipReviewScreen() {
   const setSubmissionSuccess = useSlipStore((s) => s.setSubmissionSuccess);
   const setSubmissionError = useSlipStore((s) => s.setSubmissionError);
   const clearSubmissionState = useSlipStore((s) => s.clearSubmissionState);
+  const isLockInAnimating = useSlipStore((s) => s.isLockInAnimating);
+  const setLockInAnimating = useSlipStore((s) => s.setLockInAnimating);
+
+  // Pending slip ID while lock-in animation plays.
+  // Uses a ref (not state) so handleLockInComplete's identity stays stable
+  // and doesn't cause PointLockMoment to restart mid-ceremony.
+  const pendingSlipIdRef = useRef<string | null>(null);
 
   // Modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -91,15 +98,15 @@ export default function SlipReviewScreen() {
 
   // Handle cancel from modal
   const handleCancel = useCallback(() => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isLockInAnimating) {
       setIsModalVisible(false);
     }
-  }, [isSubmitting]);
+  }, [isSubmitting, isLockInAnimating]);
 
   // Handle confirm submission
   const handleConfirm = useCallback(async () => {
     // Prevent double-submit
-    if (isSubmitting) return;
+    if (isSubmitting || isLockInAnimating) return;
 
     setSubmitting(true);
 
@@ -111,9 +118,12 @@ export default function SlipReviewScreen() {
       const result = await createAndLockSlip(payload);
 
       if (result.success && result.slip) {
-        // Success! Store the slip ID and clear picks
-        setSubmissionSuccess(result.slip.id);
-        setIsModalVisible(false);
+        // API success — start the lock-in ceremony animation
+        // Store the slip ID temporarily; setSubmissionSuccess will be
+        // called when the ceremony completes via handleLockInComplete.
+        pendingSlipIdRef.current = result.slip.id;
+        setSubmitting(false);
+        setLockInAnimating(true);
       } else {
         // Handle error
         setSubmissionError(result.error?.message || 'Failed to submit slip');
@@ -121,7 +131,20 @@ export default function SlipReviewScreen() {
     } catch (error: any) {
       setSubmissionError(error.message || 'An unexpected error occurred');
     }
-  }, [picks, isSubmitting, setSubmitting, setSubmissionSuccess, setSubmissionError]);
+  }, [picks, isSubmitting, isLockInAnimating, setSubmitting, setSubmissionError, setLockInAnimating]);
+
+  // Handle lock-in ceremony completion.
+  // Reads from pendingSlipIdRef (stable ref) so this callback's identity
+  // never changes mid-ceremony — preventing PointLockMoment restarts.
+  const handleLockInComplete = useCallback(() => {
+    setLockInAnimating(false);
+    const slipId = pendingSlipIdRef.current;
+    if (slipId) {
+      setSubmissionSuccess(slipId);
+      pendingSlipIdRef.current = null;
+      setIsModalVisible(false);
+    }
+  }, [setLockInAnimating, setSubmissionSuccess]);
 
   // Handle starting a new slip after success
   const handleNewSlip = useCallback(() => {
@@ -312,7 +335,7 @@ export default function SlipReviewScreen() {
             disabled={isSubmitting || hasInvalidPicks}
           >
             <Text style={styles.submitButtonText}>
-              {hasInvalidPicks ? 'Fix Invalid Picks' : 'Lock Slip'}
+              {hasInvalidPicks ? 'Fix Invalid Picks' : 'Lock In'}
             </Text>
           </Pressable>
         </View>
@@ -323,9 +346,11 @@ export default function SlipReviewScreen() {
           picks={picks}
           pointPotential={pointPotential}
           isSubmitting={isSubmitting}
+          isLockInAnimating={isLockInAnimating}
           error={submitError}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
+          onLockInComplete={handleLockInComplete}
         />
       </SafeAreaView>
     </>

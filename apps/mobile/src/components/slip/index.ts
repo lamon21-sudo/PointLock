@@ -15,3 +15,7 @@ export { SlipFilterControl } from './SlipFilterControl';
 export { SlipListCard } from './SlipListCard';
 export { PointsDisplay } from './PointsDisplay';
 export { PickResultItem } from './PickResultItem';
+
+// Lock-in ceremony
+export { PointLockMoment } from './PointLockMoment';
+export type { PointLockMomentProps } from './PointLockMoment';

@@ -23,6 +23,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import AppIcon from '../ui/AppIcon';
+import { Haptics } from '../../services/haptics.service';
 
 // =====================================================
 // Types
@@ -138,6 +139,9 @@ export function MatchCompletionModal({
   onViewDetails,
   onBackToHome,
 }: MatchCompletionModalProps): React.ReactElement {
+  // One-shot guard: settlement haptic fires once per modal show
+  const hapticFiredRef = useRef(false);
+
   // Determine result for current user
   const isCreator = match.creatorId === currentUserId;
   const userPoints = isCreator ? match.creatorPoints : match.opponentPoints;
@@ -167,6 +171,15 @@ export function MatchCompletionModal({
   // Run animations when modal becomes visible
   useEffect(() => {
     if (visible) {
+      // Settlement haptic — one-shot guard ensures it fires once per show.
+      // The 5000ms throttle in the service provides additional dedup with toasts.
+      if (!hapticFiredRef.current) {
+        hapticFiredRef.current = true;
+        if (resultType === 'win') Haptics.trigger('settlement-win');
+        else if (resultType === 'loss') Haptics.trigger('settlement-loss');
+        else if (resultType === 'draw') Haptics.trigger('settlement-push');
+      }
+
       // Reset animation values
       headerScale.setValue(0.5);
       headerOpacity.setValue(0);
@@ -204,6 +217,9 @@ export function MatchCompletionModal({
           }),
         ]).start();
       }, 200);
+    } else {
+      // Reset one-shot guard when modal closes so next show fires haptic
+      hapticFiredRef.current = false;
     }
   }, [visible, headerScale, headerOpacity, contentTranslateY, contentOpacity]);
 

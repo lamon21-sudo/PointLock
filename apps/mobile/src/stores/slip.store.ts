@@ -57,6 +57,8 @@ interface SlipState {
   submittedSlipId: string | null;
   /** Error from the last submission attempt */
   submitError: string | null;
+  /** Whether the lock-in ceremony animation is playing (transient, not persisted) */
+  isLockInAnimating: boolean;
 
   // =====================================================
   // Offline/Staleness State
@@ -142,6 +144,11 @@ interface SlipState {
    * Clear submission state (for retry or new slip)
    */
   clearSubmissionState: () => void;
+
+  /**
+   * Set lock-in animation playing state (transient, not persisted)
+   */
+  setLockInAnimating: (value: boolean) => void;
 
   // =====================================================
   // Offline/Staleness Actions
@@ -344,6 +351,7 @@ export const useSlipStore = create<SlipState>()(
       isSubmitting: false,
       submittedSlipId: null,
       submitError: null,
+      isLockInAnimating: false,
       // Offline state
       isOffline: false,
 
@@ -527,7 +535,12 @@ export const useSlipStore = create<SlipState>()(
           isSubmitting: false,
           submittedSlipId: null,
           submitError: null,
+          isLockInAnimating: false,
         });
+      },
+
+      setLockInAnimating: (value: boolean): void => {
+        set({ isLockInAnimating: value });
       },
 
       // =====================================================

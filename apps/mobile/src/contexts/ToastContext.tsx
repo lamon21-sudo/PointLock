@@ -18,6 +18,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
+import { Haptics } from '../services/haptics.service';
 
 // =====================================================
 // Types
@@ -108,6 +109,12 @@ export function ToastProvider({ children }: ToastProviderProps): React.ReactElem
         id,
         duration,
       };
+
+      // Settlement haptic for pick result toasts — the 5000ms throttle
+      // in the haptics service prevents double-fire with MatchCompletionModal.
+      if (config.type === 'pick_hit') Haptics.trigger('settlement-win');
+      else if (config.type === 'pick_miss') Haptics.trigger('settlement-loss');
+      else if (config.type === 'pick_push') Haptics.trigger('settlement-push');
 
       setToasts((prev) => {
         // If at max capacity, remove oldest toast(s)
